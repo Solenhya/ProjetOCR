@@ -1,5 +1,5 @@
 import re
-import dataBaseFormat as dbF
+from . import dataBaseFormat as dbF
 
 def GetName(ligne):
     pattern = r"(?<=INVOICE\s)FAC\S*"
@@ -16,7 +16,7 @@ def GetDate(ligne):
         return(match.group(0))
     
 def GetProductLigne(ligne):
-    #On devine la 
+    #On determine si il s'agit d'une ligne de prix par la présence de chiffre x chiffre
     patternVerification = r"\d+\s*x\s*\d+"
     matchVeri = re.search(patternVerification,ligne)
     if matchVeri:
@@ -48,6 +48,16 @@ def GetTotal(ligne):
         totalPrice = ConvertPrice(match.group(0))
         return(totalPrice)
 
+def GetAddress(ligne):
+    pattern1 = r"(?i)(?<=Address\s).*"
+    match1 = re.search(pattern1,ligne)
+    if match1:
+        return(match1.group(0))
+    pattern2 = r"\d{5}"
+    match2 = re.search(pattern2,ligne)
+    if match2:
+        return ligne
+
 
 def SimpleTreatments(text):
     name = ""
@@ -73,6 +83,9 @@ def SimpleTreatments(text):
         sale = GetProductLigne(ligne)
         if sale:
             Sales.append(sale)
+        tAddress = GetAddress(ligne)
+        if tAddress:
+            address+=" "+tAddress
         #TODO gerer les adresses
         
     facture = dbF.facture(name,date,destinator,email,address,Sales,total)
