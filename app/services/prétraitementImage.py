@@ -1,7 +1,7 @@
 from PIL import Image
 
 def ImagefromPath(path):
-    image = Image.open("PilPlay.png")
+    image = Image.open(path)
     # Get the size of the image
     image_width, image_height = image.size
     # Defini la taille du carrer que l'on souhaite masker

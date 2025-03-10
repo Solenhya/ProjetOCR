@@ -86,9 +86,11 @@ def SimpleTreatments(text):
         tAddress = GetAddress(ligne)
         if tAddress:
             address+=" "+tAddress
-        #TODO gerer les adresses
+        temail = GetEmail(ligne)
+        if temail:
+            email=temail
         
-    facture = dbF.facture(name,date,destinator,email,address,Sales,total)
+    facture = dbF.facture(name,date,destinator,email,address,Sales,total,None)
     return facture
     #return{"name":name,"date":date,"destinator":destinator,"Sales":Sales,"total":total}
 
