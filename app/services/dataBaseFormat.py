@@ -1,6 +1,7 @@
 import os 
 from dotenv import load_dotenv
 import psycopg2
+import re
 
 class productSale:
     def __init__(self,quantity,price,name):
@@ -42,6 +43,11 @@ class facture:
     def validateQR(self):
         if self.qrInfo.facName != self.billName:
             return False
+        date = self.qrInfo.facDate
+        simplifiedDate = date.split()[0]
+        if simplifiedDate != self.date:
+            return False
+        return True
         
 
 
@@ -50,7 +56,7 @@ class AZdbManager:
     CREATE TABLE IF NOT EXISTS factures(
     name VARCHAR(200) PRIMARY KEY,
     entrytime TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    date VARCHAR(200),
+    facdate VARCHAR(200),
     destinator VARCHAR(200),
     address VARCHAR(500),
     pricetotal INT
@@ -76,7 +82,6 @@ class AZdbManager:
     );
     """
 
-
     def __init__(self,schema):
         self.connection = self.se_connecter_a_la_base_de_donnees()
         self.schema = schema
@@ -94,11 +99,23 @@ class AZdbManager:
         curseur.execute(AZdbManager.tableClient)
         curseur.close()
 
+    def GetFacture(self,facture:facture):
+        curseur = self.GetCursor()
+        commande  = f"SELECT * FROM factures WHERE name = '{facture.billName}'"
+        curseur.execute(commande)
+        retour = curseur.fetchall()
+        curseur.close()
+        return retour
+
     def ValidateFacture(self,facture:facture):
         if(facture.qrInfo==None):
             return "ErQR"
         if(not facture.validatePrice):
             return "PriceEr"
+        if(not facture.validateQR):
+            return "ErValQR"
+        if(len(self.GetFacture(facture))>0):
+            return "ErDuplication"
         return "Success"
     
     #Pour recuperer les clients de maniere unique
@@ -110,17 +127,19 @@ class AZdbManager:
         curseur.close()
         return retour
 
+    #La fonction qui gere les facture (validation puis insertion)
     def ManageFacture(self,facture:facture):
         result = self.ValidateFacture(facture)
         if(result=="Success"):
-            createClient = False
+            createClient = True
             if(len(self.getClientU(facture.destinator))>0):
-                createClient=True
+                createClient=False
             self.insertFacture(facture,createClient)
+        return result
 
     #Fait l'insertion une fois les verifications faite
     def insertFacture(self,facture:facture,createClient):
-        factureCommande = "INSERT INTO factures (name,date,destinator,address,pricetotal) VALUES (%s,%s,%s,%s,%s);"
+        factureCommande = "INSERT INTO factures (name,facdate,destinator,address,pricetotal) VALUES (%s,%s,%s,%s,%s);"
         curseur=self.GetCursor()
         curseur.execute(factureCommande,(facture.billName,facture.date,facture.destinator,facture.address,facture.pricetotal))
         self.connection.commit()

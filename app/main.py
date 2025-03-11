@@ -27,18 +27,20 @@ def TraiteDwldFactures():
     traité = 0
     print(f"Traitement de {taille} fichiers de facture")
     for i in range(taille):
-        TraiteFacture(GetFullPath(fileListe[i]),manager)
+        TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i])
         traité+=1
         if(traité%bloc==0):
             print(f"{traité}/{taille} fichiers traité")
     manager.Disconnect()
 
-def TraiteFacture(path,dbM):
+def TraiteFacture(path,dbM,fileName):
     image = preImage.ImagefromPath(path)
     ocr = OCRT.OCRFrom(image)
     bill = OCRF.SimpleTreatments(ocr)
     qr = QRT.GetQRInfo(path)
     bill.qrInfo=qr
-    dbM.ManageFacture(bill)
+    result = dbM.ManageFacture(bill)
+    if(result!="Success"):
+        print(f"Erreur {result} dans la facture {fileName}")
 
 TraiteDwldFactures()
