@@ -26,11 +26,17 @@ def TraiteDwldFactures():
     bloc=10
     traité = 0
     print(f"Traitement de {taille} fichiers de facture")
+    errors =[]
     for i in range(taille):
-        TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i])
+        erreur = TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i])
+        if erreur:
+            errors.append(erreur)
         traité+=1
         if(traité%bloc==0):
             print(f"{traité}/{taille} fichiers traité")
+    with open("Erreurs.txt", "w") as file:
+    # Write each message to the file with a newline
+        file.writelines(f"{message}\n" for message in errors)
     manager.Disconnect()
 
 def TraiteFacture(path,dbM,fileName):
@@ -41,6 +47,12 @@ def TraiteFacture(path,dbM,fileName):
     bill.qrInfo=qr
     result = dbM.ManageFacture(bill)
     if(result!="Success"):
-        print(f"Erreur {result} dans la facture {fileName}")
+        message = f"Erreur {result} dans la facture {fileName}"
+        print(message)
+        return message
 
-TraiteDwldFactures()
+#TraiteDwldFactures()
+testTO = GetFullPath("FAC_2019_0041-875.png")
+manager = dbF.AZdbManager("fabien")
+TraiteFacture(testTO,manager,"FAC_2019_0041-875.png")
+manager.Disconnect()

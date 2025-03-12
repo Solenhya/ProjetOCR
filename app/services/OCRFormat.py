@@ -94,6 +94,49 @@ def SimpleTreatments(text):
     return facture
     #return{"name":name,"date":date,"destinator":destinator,"Sales":Sales,"total":total}
 
+#Prend en parametre des lignes extraite d'une zone de document et insere la data dans la facture
+#Ecrase les valeurs unique
+def ZoneAdd(text,facture:dbF.facture):
+    for ligne in text:
+        tName = GetName(ligne)
+        if tName:
+            facture.billName = tName
+        tDate = GetDate(ligne)
+        if tDate:
+            facture.date = tDate
+        tDest = GetDestinator(ligne)
+        if tDest:
+            facture.destinator=tDest
+        tTotal = GetTotal(ligne)
+        if tTotal:
+            facture.pricetotal=tTotal
+        sale = GetProductLigne(ligne)
+        if sale:
+            facture.productSales.append(sale)
+        tAddress = GetAddress(ligne)
+        if tAddress:
+            facture.address+=" "+tAddress
+        temail = GetEmail(ligne)
+        if temail:
+            facture.email=temail
+        
+#Prend en parametres une liste de zone traiter par OCR pour creer une facture unique a partir
+def TraitementZone(listeZones,qrInf):
+    facture = dbF.facture(billName="",date="",destinator="",email="",address="",productSales=[],pricetotal="",qrInfo=qrInf)
+    for zone in listeZones:
+        ZoneAdd(zone,facture)
+    return facture
+    
+#Fait les validation possible a partir de la facture
+def ValidateFacture(facture:dbF.facture):
+    if(not facture.ValidateFullness()):
+        return "Erfacture Non complete"
+    if(not facture.validatePrice()):
+        return "Erfacture pricenonEgale"
+    if(not facture.validateQR()):
+        return "Erfacture info non validé qrCode"
+    return "Success"
+
 def ConvertPrice(priceText:str):
     return int(priceText.replace(".",""))
         

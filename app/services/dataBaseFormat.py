@@ -31,16 +31,37 @@ class facture:
         self.email = email
         self.qrInfo = qrInfo
 
+    def ValidateFullness(self):
+        if(self.billName==""):
+            return False
+        if(self.date==""):
+            return False
+        if(self.destinator==""):
+            return False
+        if(self.address==""):
+            return False
+        if(self.pricetotal==""):
+            return False
+        if(self.email==""):
+            return False
+        if(len(self.productSales==0)):
+            return False
+        if(self.qrInfo==None):
+            return False
+        
     def validatePrice(self):
         suposePrice = 0
         for sale in self.productSales:
             suposePrice+=sale.getTotalCost()
+
         priceDiff = self.pricetotal-suposePrice
+        print(f" Prix suposer {suposePrice} prix total {self.pricetotal} difference {priceDiff}")
         if(priceDiff>0):
             return False
         return True
 
     def validateQR(self):
+        print(f"Valeur QR : {self.qrInfo.facName} and name {self.billName}")
         if self.qrInfo.facName != self.billName:
             return False
         date = self.qrInfo.facDate
@@ -108,11 +129,12 @@ class AZdbManager:
         return retour
 
     def ValidateFacture(self,facture:facture):
+        print("Validate Facture")
         if(facture.qrInfo==None):
             return "ErQR"
-        if(not facture.validatePrice):
+        if(not facture.validatePrice()):
             return "PriceEr"
-        if(not facture.validateQR):
+        if(not facture.validateQR()):
             return "ErValQR"
         if(len(self.GetFacture(facture))>0):
             return "ErDuplication"
