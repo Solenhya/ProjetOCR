@@ -1,4 +1,5 @@
 from PIL import Image
+import numpy as np
 
 def ImagefromPath(path):
     image = Image.open(path)
@@ -43,7 +44,7 @@ def GetImagesFull(path):
 def Identity(image,parm1,parm2):
     return image
 
-def GetImagesfromPath(path,scale1=20,scale2=4,imageUpgrade=,par1,par2):
+def GetImagesfromPath(path,scale1=20,scale2=4,imageUpgrade=Identity,par1=0,par2=0,sampling=Image.Resampling.NEAREST):
     resampling = Image.Resampling.LANCZOS
     image = Image.open(path)
     image_width, image_height = image.size
@@ -52,7 +53,7 @@ def GetImagesfromPath(path,scale1=20,scale2=4,imageUpgrade=,par1,par2):
     height1 = 160
     zone1 = (0,0,width1,height1)
     premiereImage = image.crop(zone1)
-    premiereImage = premiereImage.resize((width1*scale1,height1*scale1),resample=resampling)
+    premiereImage = premiereImage.resize((width1*scale1,height1*scale1),resample=sampling)
     #premiereImage = CutImage(premiereImage,180)
 
     height2 = image_height-height1
@@ -60,45 +61,50 @@ def GetImagesfromPath(path,scale1=20,scale2=4,imageUpgrade=,par1,par2):
     print(height2)
     zone2 = (0,height1,image_width,image_height)
     deuxiemeImage = image.crop(zone2)
-    deuxiemeImage = deuxiemeImage.resize((width2*scale2,height2*scale2),resample=resampling)
+    deuxiemeImage = deuxiemeImage.resize((width2*scale2,height2*scale2),resample=sampling)
     #Noircit les characters
     #deuxiemeImage = CutImage(deuxiemeImage,180)
     return [premiereImage,deuxiemeImage]
 
-def CutImage(image,threshold):
-    gray_img = image.convert("L")
-    pixels = gray_img.load()
-# Loop through all pixels and set them to either black or white based on the threshold
-    width, height = gray_img.size
-    for x in range(width):
-        for y in range(height):
-            # Get pixel value
-            pixel_value = pixels[x, y]
-        
-            # Set to black if below threshold, white if above
-            if pixel_value < threshold:
-                pixels[x, y] = 0  # Black
-            else:
-                pass
-                #pixels[x, y] = 255  # White
-    return gray_img
+def GetImages(path,scaleFactor1=10,scaleFactor2=4,darkening=0.8,sampling=Image.Resampling.LANCZOS):
+    image = Image.open(path)
+    images = CropImage(image)
+    premierImage = images[0]
+    premierImage = ScaleImage(premierImage,scaleFactor=scaleFactor1,sampling=sampling)
+    secondeImage = images[1]
+    secondeImage = ScaleImage(secondeImage,scaleFactor=scaleFactor2,sampling=sampling)
+    if(darkening<1):
+        premierImage = DarkenImage(premierImage,darkening=darkening)
+        secondeImage = DarkenImage(secondeImage,darkening=darkening)
+    return[premierImage,secondeImage]
 
-def ShiftImage(image,threshold,value):
-    gray_img = image.convert("L")
-    pixels = gray_img.load()
-# Loop through all pixels and set them to either black or white based on the threshold
-    width, height = gray_img.size
-    for x in range(width):
-        for y in range(height):
-            # Get pixel value
-            pixel_value = pixels[x, y]
-            if pixel_value<value:
-                pixels[x,y]=0
-            elif pixel_value < threshold:
-                pixels[x, y] -= value  # Black
-            else:
-                pixels[x, y] = 255  # White
-    return gray_img
+def CropImage(image):
+    image_width, image_height = image.size
+    width1 = image_width-500
+    height1 = 160
+    zone1 = (0,0,width1,height1)
+    premiereImage = image.crop(zone1)
+    zone2 = (0,height1,image_width,image_height)
+    deuxiemeImage = image.crop(zone2)
+    return [premiereImage,deuxiemeImage]
 
-def BoostImage(image,threshold,value):
-    pass
+def ScaleImage(image,scaleFactor,sampling):
+    image_width, image_height = image.size
+    image = image.resize((int(image_width*scaleFactor),int(image_height*scaleFactor)),resample=sampling)
+    return image
+
+def DarkenImage(image,darkening,threshold=240):
+    if image.mode != 'L':
+        img_gray = image.convert('L')
+    else:
+        img_gray = image
+    # Convert to numpy array for easier manipulation
+    img_array = np.array(img_gray)
+    # Create a mask for non-white pixels (adjust threshold as needed)
+    # Pixels with values less than threshold are considered non-white
+    non_white_mask = img_array < threshold 
+    # Darken non-white pixels
+    img_array[non_white_mask] = np.clip(img_array[non_white_mask] * darkening, 0, 255).astype(np.uint8)  
+    # Convert back to PIL Image
+    img_enhanced = Image.fromarray(img_array)  
+    return img_enhanced 

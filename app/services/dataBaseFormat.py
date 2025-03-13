@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 import psycopg2
 import re
+from tqdm import tqdm
 
 class productSale:
     def __init__(self,quantity,price,name):
@@ -31,30 +32,47 @@ class facture:
         self.email = email
         self.qrInfo = qrInfo
 
+    def fromDict(dict):
+        listeSale = []
+        listDict = dict["productSales"]
+        for sale in listDict:
+            ajout = productSale(name=sale["productName"],quantity=sale["productQuant"],price=sale["productPrice"])
+            listeSale.append(ajout)
+        return facture(
+        billName = dict["billName"],
+        date=dict["date"],
+        destinator=dict["destinator"],
+        email=dict["email"],
+        address=dict["address"],
+        productSales=listeSale,
+        pricetotal=dict["pricetotal"],
+        qrInfo=None
+        )
+
     def ValidateFullness(self):
         if(self.billName==""):
-            print("Missing billName")
+            tqdm.write("Missing billName")
             return False
         if(self.date==""):
-            print("Missing date")
+            tqdm.write("Missing date")
             return False
         if(self.destinator==""):
-            print("Missing destinator")
+            tqdm.write("Missing destinator")
             return False
         if(self.address==""):
-            print("Missing address")
+            tqdm.write("Missing address")
             return False
         if(self.pricetotal==""):
-            print("Missing price")
+            tqdm.write("Missing price")
             return False
         if(self.email==""):
-            print("Missing email")
+            tqdm.write("Missing email")
             return False
         if(len(self.productSales)==0):
-            print("Missing sales")
+            tqdm.write("Missing sales")
             return False
         if(self.qrInfo==None):
-            print("Missing qrInfo")
+            tqdm.write("Missing qrInfo")
             return False
         return True
 
@@ -64,18 +82,18 @@ class facture:
             suposePrice+=sale.getTotalCost()
         priceDiff = self.pricetotal-suposePrice
         if(priceDiff>0):
-            print(f" Prix suposer {suposePrice} prix total {self.pricetotal} difference {priceDiff}")
+            tqdm.write(f" Prix suposer {suposePrice} prix total {self.pricetotal} difference {priceDiff}")
             return False
         return True
 
     def validateQR(self):
         if self.qrInfo.facName != self.billName:
-            print("ErqrCode sur le name")
+            tqdm.write("ErqrCode sur le name")
             return False
         date = self.qrInfo.facDate
         simplifiedDate = date.split()[0]
         if simplifiedDate != self.date:
-            print("ErqrCode sur la date")
+            tqdm.write("ErqrCode sur la date")
             return False
         return True
     
@@ -230,7 +248,7 @@ class AZdbManager:
                 password=mot_de_passe,
                 host=host
             )
-            print("Connexion réussie à la base de données")
+            tqdm.write("Connexion réussie à la base de données")
             return connexion
         except psycopg2.Error as e:
             print(f"Erreur lors de la connexion à la base de données: {e}")

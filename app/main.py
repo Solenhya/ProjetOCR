@@ -7,8 +7,7 @@ import services.qrCodeTraitement as QRT
 from pathlib import Path
 import os
 
-
-import time
+from tqdm import tqdm
 #Recupere la path complete d'un fichiers dans le dossier data
 def GetFullPath(filename):
     current_directory = Path.cwd()
@@ -29,13 +28,13 @@ def TraiteDwldFactures():
     traité = 0
     print(f"Traitement de {taille} fichiers de facture")
     errors =[]
-    for i in range(taille):
+    for i in tqdm(range(taille)):
         erreur = TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i])
         if erreur:
             errors.append(erreur)
         traité+=1
         if(traité%bloc==0):
-            print(f"{traité}/{taille} fichiers traité")
+            tqdm.write(f"{traité}/{taille} fichiers traité")
     with open("Erreurs.txt", "w") as file:
     # Write each message to the file with a newline
         file.writelines(f"{message}\n" for message in errors)
@@ -45,24 +44,23 @@ def TraiteDwldFactures():
 def TraiteFacture(path,dbM,fileName):
     existingFacture = dbM.GetFactureDoc(fileName)
     if(len(existingFacture)>0):
-        print(f"Facture {fileName} deja scanner")
+        tqdm.write(f"Facture {fileName} deja scanner")
         return("Success")
-    timeBefore = time.time()
-    images = preImage.GetImagesFull(path)
+    images = preImage.GetImages(path,scaleFactor1=5,scaleFactor2=1,darkening=0.5)
     ocr = OCRT.OCRMultiple(images)
     qrC = QRT.GetQRInfo(path)
-    bill = OCRF.TraitementZone(ocr,qrC)
+    bill = OCRF.TraitementZoneDict(ocr)
+    bill = dbF.facture.fromDict(bill)
+    bill.qrInfo = qrC
     validation = OCRF.ValidateFacture(bill)
-    timeAfter = time.time()
-    print(f"Time : {timeAfter-timeBefore}")
     if(validation!="Success"):
         message = f"Erreur {validation} dans la facture {fileName}"
-        print(message)
+        tqdm.write(message)
         return message
     result = dbM.ManageFacture(bill,fileName)
     if(result!="Success"):
         message = f"Erreur {result} dans la facture {fileName}"
-        print(message)
+        tqdm.write(message)
         return message
 
 if __name__ == "__main__":
@@ -70,6 +68,10 @@ if __name__ == "__main__":
     """
     path = GetFullPath("FAC_2018_0001-654.png")
     manager = dbF.AZdbManager("fabien")
+    TraiteFacture()
+    
+    """
+    """
     images = preImage.GetImagesfromPath(path)
     ocr = OCRT.OCRMultiple(images)
     for oc in ocr:
