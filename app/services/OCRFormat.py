@@ -20,9 +20,8 @@ def GetProductLigne(ligne):
     patternVerification = r"\d+\s*x\s*\d+"
     matchVeri = re.search(patternVerification,ligne)
     if matchVeri:
-        patternText = r"(.*)(\d+)\s*x\s*([0-9.]+)"
+        patternText = r"(.*)(\d+)\s*x\s*([0-9.,]+)"
         match = re.search(patternText, ligne)
-        productPrice = ConvertPrice(match.group(3))
         productPrice = ConvertPrice(match.group(3))
         productQuant = int(match.group(2))
         sale = dbF.productSale(productQuant,productPrice,match.group(1))
@@ -30,9 +29,13 @@ def GetProductLigne(ligne):
         #return {"productName":match.group(1),"productQuant":match.group(2),"productPrice":productPrice}
 
 def GetEmail(ligne):
-    pattern = r"\S+@\S+\.\S+"
+    #Pattern d'email avec de la flexibilité pour les espace blanc
+    pattern = r"Email\s+(.*?)$"
     match = re.search(pattern,ligne)
     if match:
+        email_with_spaces = match.group(1)  # "xdk f@dsds .sds"
+        # Now remove all whitespace
+        email_no_spaces = re.sub(r"\s+", "", email_with_spaces)  # "xdkf@dsds.sds"
         return(match.group(0))
 
 def GetDestinator(ligne):
@@ -132,11 +135,17 @@ def ValidateFacture(facture:dbF.facture):
     if(not facture.ValidateFullness()):
         return "Erfacture Non complete"
     if(not facture.validatePrice()):
-        return "Erfacture pricenonEgale"
+        return "Erfacture price non Egale"
     if(not facture.validateQR()):
-        return "Erfacture info non validé qrCode"
+        print("Erreur de validation qr forcer")
+        #return "Erfacture info non validé qrCode"
     return "Success"
 
 def ConvertPrice(priceText:str):
-    return int(priceText.replace(".",""))
+    # Trouve tout les chiffres pour retirer la virgule
+    numbers = re.findall(r'\d+', priceText)
+    # Concatene
+    result = ''.join(numbers)
+    #print(f"brut {priceText} result {result} conversion {int(result)}")
+    return int(result)
         

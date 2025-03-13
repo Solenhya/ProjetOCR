@@ -21,7 +21,7 @@ class QRInfo:
      
 
 class facture:
-    def __init__(self,billName,date,destinator,email,address,productSales,pricetotal,qrInfo):
+    def __init__(self,billName,date,destinator,email,address,productSales,pricetotal,qrInfo:QRInfo):
         self.billName = billName
         self.date = date
         self.destinator = destinator
@@ -33,43 +33,55 @@ class facture:
 
     def ValidateFullness(self):
         if(self.billName==""):
+            print("Missing billName")
             return False
         if(self.date==""):
+            print("Missing date")
             return False
         if(self.destinator==""):
+            print("Missing destinator")
             return False
         if(self.address==""):
+            print("Missing address")
             return False
         if(self.pricetotal==""):
+            print("Missing price")
             return False
         if(self.email==""):
+            print("Missing email")
             return False
-        if(len(self.productSales==0)):
+        if(len(self.productSales)==0):
+            print("Missing sales")
             return False
         if(self.qrInfo==None):
+            print("Missing qrInfo")
             return False
-        
+        return True
+
     def validatePrice(self):
         suposePrice = 0
         for sale in self.productSales:
             suposePrice+=sale.getTotalCost()
-
         priceDiff = self.pricetotal-suposePrice
-        print(f" Prix suposer {suposePrice} prix total {self.pricetotal} difference {priceDiff}")
         if(priceDiff>0):
+            print(f" Prix suposer {suposePrice} prix total {self.pricetotal} difference {priceDiff}")
             return False
         return True
 
     def validateQR(self):
-        print(f"Valeur QR : {self.qrInfo.facName} and name {self.billName}")
         if self.qrInfo.facName != self.billName:
+            print("ErqrCode sur le name")
             return False
         date = self.qrInfo.facDate
         simplifiedDate = date.split()[0]
         if simplifiedDate != self.date:
+            print("ErqrCode sur la date")
             return False
         return True
-        
+    
+    #Function to reformate behind OCR error
+    def ReFormat(self):
+        pass#TODO
 
 
 class AZdbManager:
@@ -80,7 +92,8 @@ class AZdbManager:
     facdate VARCHAR(200),
     destinator VARCHAR(200),
     address VARCHAR(500),
-    pricetotal INT
+    pricetotal INT,
+    originDoc VARCHAR(200)
     );
     """
     #le prix est en centimes
@@ -120,6 +133,14 @@ class AZdbManager:
         curseur.execute(AZdbManager.tableClient)
         curseur.close()
 
+    def GetFactureDoc(self,document):
+        curseur = self.GetCursor()
+        commande  = f"SELECT * FROM factures WHERE originDoc = '{document}'"
+        curseur.execute(commande)
+        retour = curseur.fetchall()
+        curseur.close()
+        return retour
+
     def GetFacture(self,facture:facture):
         curseur = self.GetCursor()
         commande  = f"SELECT * FROM factures WHERE name = '{facture.billName}'"
@@ -128,18 +149,29 @@ class AZdbManager:
         curseur.close()
         return retour
 
+    #Fonction de validation de la facture
     def ValidateFacture(self,facture:facture):
-        print("Validate Facture")
-        if(facture.qrInfo==None):
-            return "ErQR"
-        if(not facture.validatePrice()):
-            return "PriceEr"
-        if(not facture.validateQR()):
-            return "ErValQR"
         if(len(self.GetFacture(facture))>0):
             return "ErDuplication"
         return "Success"
     
+    #Fait la validation du client
+    def ValidateClient(self,facture:facture):
+        client = self.getClientU(facture.destinator)
+        if(len(client)==0):
+            return (True,"Success")
+        client = client[0]
+        clientEmail = client[1]
+        clientGender = client[2]
+        clientBirth = client[3]
+        if(clientEmail!=facture.email):
+            return(False,"Erclient erreur sur l'email")
+        if(clientGender!=facture.qrInfo.custGender):
+            return(False,"Erclient erreur sur le genre")
+        if(clientBirth!=facture.qrInfo.custBirth):
+            return(False,"Erclient erreur sur la naissance")
+        return(False,"Success")
+
     #Pour recuperer les clients de maniere unique
     def getClientU(self,clientName):
         curseur = self.GetCursor()
@@ -150,20 +182,21 @@ class AZdbManager:
         return retour
 
     #La fonction qui gere les facture (validation puis insertion)
-    def ManageFacture(self,facture:facture):
+    def ManageFacture(self,facture:facture,fileName):
         result = self.ValidateFacture(facture)
         if(result=="Success"):
-            createClient = True
-            if(len(self.getClientU(facture.destinator))>0):
-                createClient=False
-            self.insertFacture(facture,createClient)
+            createClient , message = self.ValidateClient(facture)
+            if(message=="Success"):
+                self.insertFacture(facture,createClient,fileName)
+            return message
         return result
 
     #Fait l'insertion une fois les verifications faite
-    def insertFacture(self,facture:facture,createClient):
-        factureCommande = "INSERT INTO factures (name,facdate,destinator,address,pricetotal) VALUES (%s,%s,%s,%s,%s);"
+    def insertFacture(self,facture:facture,createClient,fileName):
+        factureCommande = "INSERT INTO factures (name,facdate,destinator,address,pricetotal,originDoc) VALUES (%s,%s,%s,%s,%s,%s);"
         curseur=self.GetCursor()
-        curseur.execute(factureCommande,(facture.billName,facture.date,facture.destinator,facture.address,facture.pricetotal))
+        curseur.execute(factureCommande,
+                        (facture.qrInfo.facName,facture.qrInfo.facDate,facture.destinator,facture.address,facture.pricetotal,fileName))
         self.connection.commit()
         for sale in facture.productSales:
             self.insertSale(sale,facture.billName,curseur)
@@ -182,7 +215,6 @@ class AZdbManager:
         curseur.execute(commande,(clientName,clientEmail,gender,birthDate))
         self.connection.commit()
         #besoin de gerer le fait qu'il puisse ne pas etre bon : exemple exister deja mais pas avec la meme address mail. 
-        #Eventuellement gerer le QR Code
 
     def se_connecter_a_la_base_de_donnees(self):
         load_dotenv()
