@@ -167,6 +167,16 @@ def TraitementZoneDict(listeZones):
         ZoneAddDict(zone,retour)
     return retour
 
+#Valide tout les actes de validation et renvoi un dictionnaire avec les resultats
+def ValidateFactureComplete(facture:dbF.facture):
+    retour = {"fullNess":"Success","price":"Success","qr":"Success"}
+    if(not facture.ValidateFullness()):
+        retour["fullNess"]= "Erfacture Non complete"
+    if(not facture.validatePrice()):
+        retour["price"]= "Erfacture price non Egale"
+    if(not facture.validateQR()):
+        retour["qr"]="Erfacture info non validé qrCode"
+    return retour
 
 #Fait les validation possible a partir de la facture
 def ValidateFacture(facture:dbF.facture):

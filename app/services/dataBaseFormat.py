@@ -199,6 +199,34 @@ class AZdbManager:
         curseur.close()
         return retour
 
+    def DataBaseValidation(self,facture,fileName):
+        retour = {"facturePresence":{"status":"Absent","fromFile":"","conflict":"False"},"clientInfo":{
+            "clientPresence":"False",
+            "EmailValidation":"False",
+            "GenderValidation":"False",
+            "BirthValidation":"False"
+        }}
+        factures = self.GetFactureDoc(fileName)
+        if(len(factures)>0):
+            retour["facturePresence"]["status"]="True"
+            retour["facturePresence"]["fromFile"]=factures[0][6]
+            if(retour["facturePresence"]["fromFile"]!=fileName):
+                retour["facturePresence"]["conflict"]="True"
+        client = self.getClientU(facture.destinator)
+        if len(client)>0:
+            retour["clientInfo"]["clientPresence"]="True"
+            client = client[0]
+            clientEmail = client[1]
+            clientGender = client[2]
+            clientBirth = client[3]
+            if(clientEmail==facture.email):
+                retour["clientInfo"]["EmailValidation"]="True"
+            if(clientGender==facture.qrInfo.custGender):
+                retour["clientInfo"]["GenderValidation"]="True"
+            if(clientBirth==facture.qrInfo.custBirth):
+                retour["clientInfo"]["BirthValidation"]="True"
+        return retour
+    
     #La fonction qui gere les facture (validation puis insertion)
     def ManageFacture(self,facture:facture,fileName):
         result = self.ValidateFacture(facture)

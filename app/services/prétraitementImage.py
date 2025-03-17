@@ -1,6 +1,11 @@
 from PIL import Image
 import numpy as np
 
+
+def ImageBrut(path):
+    image = Image.open(path)
+    return image
+
 def ImagefromPath(path):
     image = Image.open(path)
     # Get the size of the image
