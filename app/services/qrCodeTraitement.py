@@ -35,6 +35,16 @@ def GetQRInfo(imagePath):
         return dbF.QRInfo(values["facName"],values["facDate"],values["custGender"],values["custBirth"])
     return None
 
+def GetQRInfoDict(imagePath):
+    data = GetQRData(imagePath)
+
+    if data:
+        values = {"facName":data["INVOICE"],"facDate":data["DATE"],"custBirth":"","custGender":data["CUST"][0]}
+        ligne = data["CUST"]
+        reg = r"(?<=birth\s).+"
+        match = re.search(reg,ligne)
+        values["custBirth"]=match.group(0)
+        return values
 """
 INVOICE:FAC/2018/0001
 DATE:2018-10-13 03:27:0

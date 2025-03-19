@@ -64,7 +64,6 @@ def TraiteDwldFactures():
         file.writelines(f"{message}\n" for message in errors)
     manager.Disconnect()
 
-
 def TraiteFacture(path,dbM,fileName):
     existingFacture = dbM.GetFactureDoc(fileName)
     if(len(existingFacture)>0):
@@ -88,8 +87,7 @@ def TraiteFacture(path,dbM,fileName):
         return message
     return "Success"
 
-
-
+#Partie API 
 @app.get("/GetAvailableFiles")
 def GetAvailableFiles():
     data_path = GetPathToData()
@@ -98,7 +96,7 @@ def GetAvailableFiles():
     fileListe = os.listdir(data_path)
     return fileListe
 
-@app.post("/ocrBrutFacture")
+@app.post("/ocrBrutInfo")
 def ocrBrutFacture(fileName):
     fullPath = GetFullPath(fileName)
     image = preImage.ImageBrut(fullPath)
@@ -108,7 +106,7 @@ def ocrBrutFacture(fileName):
     return{"ocr":ocr,"qr":qrC}
 
 @app.post("/ocrValidate")
-def ocrFacture(fileName):
+def ocrValidate(fileName):
     info = ocrBrutFacture(fileName)
     ocrFormat = OCRF.TraitementZoneDict(info["ocr"])
     qrC = info["qr"]
@@ -119,6 +117,14 @@ def ocrFacture(fileName):
     dbValidation = manager.DataBaseValidation(bill,fileName)
     manager.Disconnect()
     return {"IntraValidation":IntraValidation,"dbValidation":dbValidation}
+
+@app.post("/ocrFactureName")
+def ocrFactureName(fileName):
+    fullPath = GetFullPath(fileName)
+    manager = dbF.AZdbManager("fabien")
+    result = TraiteFacture(fullPath,manager,fileName)
+    manager.Disconnect()
+    return result
 
 if __name__ == "__main__":
     try:
