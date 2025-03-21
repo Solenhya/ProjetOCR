@@ -9,7 +9,7 @@
         <!-- First image and text -->
         <div class="col-md-6 mb-4">
             <div class="card">
-                <img src="data:image/png;base64,{{ split.image | b64encode }}" class="card-img-top" alt={{ split.description }}>
+                <img src="data:image/png;base64,{{ split.image }}" class="card-img-top" alt={{ split.description }}>
                 <div class="card-body">
                     <p class="card-text">{{ split.text }}</p>
                 </div>

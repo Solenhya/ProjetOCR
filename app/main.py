@@ -19,6 +19,8 @@ from tqdm import tqdm
 from fastapi import FastAPI , Request , File , UploadFile
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse,HTMLResponse
+import io
+import base64
 
 app = FastAPI(
     title="OCR Facture",
@@ -116,6 +118,8 @@ def measure_execution_time(func, *args, **kwargs):
     elapsed_time = end_time - start_time
     return result, elapsed_time
 
+imageParam = {"scaleFactor1":5,"scaleFactor2":1,"darkening":0.5}
+
 def TraiteFactureFile(file,origin,fileName,user,manager=None):
     if(not manager):
         manager = dataBaseManager.DBManager() 
@@ -134,7 +138,15 @@ def TraiteFactureFile(file,origin,fileName,user,manager=None):
     manager.CreateEntriesFacture(bill,qrC,origin,fileName,user)
     return "Success"
 
+def convertImageB64(image):
+        # Convert the image to a BytesIO object
+    img_bytes = io.BytesIO()
+    image.save(img_bytes, format="PNG")
+    img_bytes.seek(0)  # Go to the beginning of the BytesIO stream
 
+    # Convert the BytesIO object to a Base64 string
+    img_base64 = base64.b64encode(img_bytes.getvalue()).decode("utf-8")
+    return img_base64
 
 #Partie API 
 @app.get("/GetAvailableFiles")
@@ -171,18 +183,25 @@ async def upload_file(request: Request, image: UploadFile = File(...)):
     return RedirectResponse(url="/display-image", status_code=303)
 
 # Route to display the image after upload (without saving locally)
-@app.get("/display-image", response_class=HTMLResponse)
-async def display_image(request: Request):
+@app.post("/display-ocr", response_class=HTMLResponse)
+async def display_image(request: Request,image: UploadFile =File(...)):
     # Get the image data from the request state
-    image_data = getattr(request.state, "image_data", None)
+    image_data = await image.read()
     
     if image_data:
         # Convert the image to base64 so it can be displayed in an <img> tag in HTML
         image = Image.open(io.BytesIO(image_data))
-        buffered = io.BytesIO()
-        image.save(buffered, format="PNG")
-        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-
+        images = preImage.GetImages(image=image,scaleFactor1=imageParam["scaleFactor1"],scaleFactor2=imageParam["scaleFactor2"],darkening=imageParam["darkening"])
+        ocrInfo=[]
+        osd = OCRT.OCRWithBoxe(images)
+        for ocr in osd:
+            ajout = {}
+            ajout["text"]=ocr["text"]
+            ajout["image"]=convertImageB64(ocr["imageBoxe"])
+            ajout["descrption"]="Image de l'OSD"
+            ocrInfo.append(ajout)
+        img_str=convertImageB64(image)
+        return templates.TemplateResponse("showOCR.html",{"request":request,"ocrInfo":ocrInfo})
         # Return the HTML with the image embedded as base64
         html_content = f'''
         <html>

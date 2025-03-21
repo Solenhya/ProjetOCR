@@ -23,7 +23,7 @@ def OSDImage(image):
     # Run Tesseract to get the bounding boxes
     # Get the data (boxes, confidences, and text)
     h, w, _ = opencv_image.shape
-    boxes = pytesseract.image_to_boxes(opencv_image,config='--psm 6 --oem1')#Try different config
+    boxes = pytesseract.image_to_boxes(opencv_image,config='--psm 6')#Try different config
     # Draw bounding boxes around the text characters
     for b in boxes.splitlines():
         b = b.split()
@@ -39,8 +39,9 @@ def OSDImage(image):
 def OCRWithBoxe(listImage):
     retour = []
     for image in listImage:
-        text = pytesseract.image_to_string(image,config='--psm 6 --oem 1')
+        text = pytesseract.image_to_string(image,config='--psm 6')
         text = text.split("\n")
         imageBoxe = OSDImage(image)
-        retour.append(text,imageBoxe)
+        ajout = {"text":text,"imageBoxe":imageBoxe}
+        retour.append(ajout)
     return retour
