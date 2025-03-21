@@ -16,8 +16,12 @@ def parse_qr_data(qr_data):
             data_dict[key.strip()] = value.strip()  # Store it in dictionary
     return data_dict
 
-def GetQRData(imagePath):
-    code = decode(Image.open(imagePath))
+def GetQRData(image):
+    #Si on a donner un string on doit load l'image
+    if(type(image)==str):
+        image = Image.open(image)
+        
+    code = decode(image)
     if(len(code)>0):
         decoded_data = code[0].data.decode('utf-8')
         return parse_qr_data(decoded_data)

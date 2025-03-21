@@ -8,15 +8,17 @@ class Facture(Base):
     name = Column(String,primary_key=True)
     entrytime = Column(DateTime)
     facdate = Column(DateTime)
-    destinator = Column(String,ForeignKey('clients.name'))
+    destinatorId = Column(Integer,ForeignKey('clients.clientId'))
     address = Column(String)
     pricetotal = Column(Integer)
     origin=Column(String)
     originDoc = Column(String)
-    proprietor = Column(String,ForeignKey("users.id")) #Qui a importer cette facture
-    fromUser = relationship("User",back_populates="factures")
-    sales = relationship("Sale",back_populates="facture")
-    client = relationship("Client",back_populates="factures")
+    proprietorId = Column(Integer,ForeignKey("users.id")) #Qui a importer cette facture
+    request = Column(Integer,ForeignKey("OCRrequests.id"))
+    fromUser = relationship("User",back_populates="imported_factures")
+    facture_sales = relationship("Sale",back_populates="facture")
+    client = relationship("Client",back_populates="factures_client")
+    facture_request = relationship("RequestOCR",back_populates="facture")
 
 class Client(Base):
     __tablename__ = "clients"
@@ -25,7 +27,7 @@ class Client(Base):
     email = Column(String)
     gender = Column(String)
     birth = Column(Date)
-    factures = relationship("Facture",back_populates="client")
+    factures_client = relationship("Facture",back_populates="client")
 
 class Sale(Base):
     __tablename__="sales"
@@ -34,7 +36,7 @@ class Sale(Base):
     quantity = Column(Integer)
     price = Column(Integer)
     factureName = Column(String,ForeignKey("factures.name"))
-    facture = relationship("Facture",back_populates="sales")
+    facture = relationship("Facture",back_populates="facture_sales")
 
 class RequestOCR(Base):
     __tablename__="OCRrequests"
@@ -50,10 +52,25 @@ class RequestOCR(Base):
     resultDB = Column(String)
     timeEnd = Column(Date)
 
+    saved_error = relationship("Error",back_populates="from_request")
+    facture = relationship("Facture",back_populates="facture_request")
+
 class User(Base):
     __tablename__="users"
     id = Column(Integer,primary_key=True,autoincrement=True)
-    useremail = Column(String)
+    userName = Column(String)
+    userEmail = Column(String)
     userPassword=Column(String)
     userRight = Column(String)
-    factures = relationship("Facture",back_populates="fromUser")
+    imported_factures = relationship("Facture",back_populates="fromUser")
+
+class Error(Base):
+    """Table pour enregistrer lorsqu'il y a eu une erreur détécter dans le process et l'emplacement de l'image a retraiter"""
+    __tablename__="erreurs"
+    id = Column(Integer,primary_key=True,autoincrement=True)
+    request_id = Column(Integer,ForeignKey("OCRrequests.id"))
+    gravity = Column(String) #Est ce que l'erreur 
+    result = Column(String)
+    origin = Column(String)
+    savedAs = Column(String)
+    from_request=relationship("RequestOCR",back_populates="saved_error")

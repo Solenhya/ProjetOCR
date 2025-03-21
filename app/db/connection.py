@@ -5,31 +5,42 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
 from contextlib import contextmanager
 from sqlalchemy import URL
-# Load environment variables
-load_dotenv(dotenv_path="../.env")
 
-# Build connection string
-db_user = os.getenv("DBUSER")
-db_password = os.getenv("DBPASSWORD")
-db_host = os.getenv("DBHOST")
-db_name = os.getenv("DBNAME")
-db_port = os.getenv("DBPORT",5432)
+def create_db_engine():
+    """Creates the database engine after loading environment variables."""
+    # Build the connection string
+    db_user = os.getenv("DBUSER")
+    db_password = os.getenv("DBPASSWORD")
+    db_host = os.getenv("DBHOST")
+    db_name = os.getenv("DBNAME")
+    db_port = os.getenv("DBPORT", 5432)
+    
+    DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    print(DATABASE_URL)  # Optional: For debugging
 
-DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
+    # Create the engine and return it
+    return create_engine(DATABASE_URL)
 
-print(DATABASE_URL)
-# Create engine
-engine = create_engine(DATABASE_URL)
+# Create the engine and session factory only when needed
+engine = None
+Session = None
 
-# Create thread-safe session factory
-Session = scoped_session(sessionmaker(
-    bind=engine,
-    autocommit=False,
-    autoflush=False
-))
+def get_engine():
+    """Gets the engine, creating it if it doesn't exist yet."""
+    global engine
+    if engine is None:
+        engine = create_db_engine()
+    return engine
 
 def get_session():
     """Get a new session from the registry."""
+    global Session
+    if Session is None:
+        Session = scoped_session(sessionmaker(
+            bind=get_engine(),
+            autocommit=False,
+            autoflush=False
+        ))
     return Session()
 
 @contextmanager

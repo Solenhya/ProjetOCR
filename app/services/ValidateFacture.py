@@ -21,29 +21,29 @@ def ValidateFullnessDict(facture):
             return False
         return retour
 
-def ValidateFullness(facture):
-        if(facture["billName"]==""):
+def ValidateFullness(ocrInfo,QRInfo):
+        if(ocrInfo["billName"]==""):
             print("Missing billName")
             return False
-        if(facture["date"]==""):
+        if(ocrInfo["date"]==""):
             print("Missing date")
             return False
-        if(facture["destinator"]==""):
+        if(ocrInfo["destinator"]==""):
             print("Missing destinator")
             return False
-        if(facture["address"]==""):
+        if(ocrInfo["address"]==""):
             print("Missing address")
             return False
-        if(facture["pricetotal"]==""):
+        if(ocrInfo["pricetotal"]==""):
             print("Missing price")
             return False
-        if(facture["email"]==""):
+        if(ocrInfo["email"]==""):
             print("Missing email")
             return False
-        if(len(facture["productSales"])==0):
+        if(len(ocrInfo["productSales"])==0):
             print("Missing sales")
             return False
-        if(facture["qrInfo"]==None):
+        if(QRInfo==None):
             print("Missing qrInfo")
             return False
         return True
@@ -69,16 +69,16 @@ def ValidateQR(facture,qrInfo):
 def CalculateTotal(listeSale):
     total=0
     for sale in listeSale:
-        total+=sale["quantity"]*sale["price"]
+        total+=sale["productQuant"]*sale["productPrice"]
     return total
 
 #Fait les validation possible a partir de la facture
-def ValidateFacture(facture):
-    if(not ValidateFullness(facture)):
+def ValidateFacture(facture,qrInfo):
+    if(not ValidateFullness(facture,qrInfo)):
         return "Erfacture Non complete"
     if(not ValidatePrice(facture)):
         return "Erfacture price non Egale"
-    if(not ValidateQR(facture)):
+    if(not ValidateQR(facture,qrInfo)):
         print("Erreur de validation qr forcer")
         #return "Erfacture info non validé qrCode"
     return "Success"

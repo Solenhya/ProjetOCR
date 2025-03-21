@@ -1,0 +1,32 @@
+{% extends "informationTemplate.html" %}
+{% bloc main %}
+
+<table class="table table-bordered">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">FacNam</th>
+        <th scope="col">Name</th>
+        <th scope="col">Password</th>
+        <th scope = "col">Permissions</th>
+        <th scope = "col">Options</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for facture in factures %}
+        <tr>
+            <th scope="row">{{facture.facName}}</th>
+            <td>{{facture.userEmail}}</td>
+            <td>{{facture.userName}}</td>
+            <td>{{facture.userPassword}}</td>
+            <td>{{facture.permissions}}</td>
+            <td><button>Show</button></td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+  </table>
+
+{% endblock %}

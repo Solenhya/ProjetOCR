@@ -4,19 +4,28 @@ import app.services.OCRTesseract as OCRT
 import app.services.OCRFormat as OCRF
 import app.services.prétraitementImage as preImage
 import app.services.qrCodeTraitement as QRT
+import app.services.ValidateFacture as ValidateF
 from pathlib import Path
 import os
+#Call load dotenv avant d'en avoir besoin
+from dotenv import load_dotenv
+load_dotenv()
+from app.db import dataBaseManager,table_creation
+import time
+from PIL import Image
 
 from tqdm import tqdm
 
-from fastapi import FastAPI
+from fastapi import FastAPI , Request , File , UploadFile
+from fastapi.templating import Jinja2Templates
+from fastapi.responses import RedirectResponse,HTMLResponse
 
 app = FastAPI(
     title="OCR Facture",
     description="A simple API for facture ocr",
     version="0.1.0"
 )
-
+templates = Jinja2Templates(directory="templates")
 
 def GetPathToData():  
     # Go up one folder (parent directory) and then into the 'data' folder
@@ -87,6 +96,46 @@ def TraiteFacture(path,dbM,fileName):
         return message
     return "Success"
 
+def measure_execution_time(func, *args, **kwargs):
+    """
+    Measures the execution time of a function.
+    
+    Parameters:
+    - func: The function to be timed.
+    - *args: Positional arguments for the function.
+    - **kwargs: Keyword arguments for the function.
+    
+    Returns:
+    - result: The result of the function call.
+    - elapsed_time: Time in seconds that the function took to execute.
+    """
+    start_time = time.time()
+    result = func(*args, **kwargs)
+    end_time = time.time()
+    
+    elapsed_time = end_time - start_time
+    return result, elapsed_time
+
+def TraiteFactureFile(file,origin,fileName,user,manager=None):
+    if(not manager):
+        manager = dataBaseManager.DBManager() 
+    images , imageTime = measure_execution_time(preImage.GetImages,file, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
+    ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)  
+    qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,file)
+    bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
+
+    validation = ValidateF.ValidateFacture(bill,qrC)
+    if(validation!="Success"):
+        message = f"Erreur {validation} dans la facture {fileName}"
+        tqdm.write(message)
+        return message
+    
+    #TODO validation coter base de donnée
+    manager.CreateEntriesFacture(bill,qrC,origin,fileName,user)
+    return "Success"
+
+
+
 #Partie API 
 @app.get("/GetAvailableFiles")
 def GetAvailableFiles():
@@ -95,6 +144,57 @@ def GetAvailableFiles():
         raise FileNotFoundError("Data directory not found.")
     fileListe = os.listdir(data_path)
     return fileListe
+
+users = [
+    {"id": 1, "userEmail": "user1@example.com", "userName": "User One", "userPassword": "password123","permissions":"Read"},
+    {"id": 2, "userEmail": "user2@example.com", "userName": "User Two", "userPassword": "password456","permissions":"Read/Upload"},
+    {"id": 3, "userEmail": "user3@example.com", "userName": "User Three", "userPassword": "password789","permissions":"All"},
+]
+
+@app.get("/users")
+def GetUsers(request : Request):
+    #TODO set users from dataBase
+    return templates.TemplateResponse("users.html",{"request":request,"users":users})
+
+@app.get("/uploadfile")
+def Upload(request : Request):
+    return templates.TemplateResponse("uploadFile.html",{"request":request})
+
+# Route to handle the image upload with redirection
+@app.post("/uploadfile")
+async def upload_file(request: Request, image: UploadFile = File(...)):
+    # Read the image data into memory
+    image_data = await image.read()
+    # Store the image data in a session or temporary variable (e.g., request state)
+    request.state.image_data = image_data  # Store image data in the request object for this session
+    # After processing, redirect to the display-image endpoint
+    return RedirectResponse(url="/display-image", status_code=303)
+
+# Route to display the image after upload (without saving locally)
+@app.get("/display-image", response_class=HTMLResponse)
+async def display_image(request: Request):
+    # Get the image data from the request state
+    image_data = getattr(request.state, "image_data", None)
+    
+    if image_data:
+        # Convert the image to base64 so it can be displayed in an <img> tag in HTML
+        image = Image.open(io.BytesIO(image_data))
+        buffered = io.BytesIO()
+        image.save(buffered, format="PNG")
+        img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
+
+        # Return the HTML with the image embedded as base64
+        html_content = f'''
+        <html>
+            <body>
+                <h1>Uploaded Image</h1>
+                <img src="data:image/png;base64,{img_str}" alt="Uploaded Image"/>
+            </body>
+        </html>
+        '''
+        return HTMLResponse(content=html_content)
+
+    return HTMLResponse(content="<h1>No image uploaded yet!</h1>")
 
 @app.post("/ocrBrutInfo")
 def ocrBrutFacture(fileName):
@@ -127,11 +227,17 @@ def ocrFactureName(fileName):
     return result
 
 if __name__ == "__main__":
+    table_creation.DeleteTable()
+    table_creation.CreateTable()
+    image = Image.open(GetFullPath("FAC_2018_0001-654.png"))
+    TraiteFactureFile(image,"Local","FAC_2018_0001-654.png",1)
+    print("Succes")
+    """
     try:
         TraiteDwldFactures()
     except Exception as e:
         print(f"Erreur dans le traitement {e}")
-    """
+
     path = GetFullPath("FAC_2018_0001-654.png")
     manager = dbF.AZdbManager("fabien")
     TraiteFacture()

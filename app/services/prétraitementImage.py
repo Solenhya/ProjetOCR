@@ -71,8 +71,9 @@ def GetImagesfromPath(path,scale1=20,scale2=4,imageUpgrade=Identity,par1=0,par2=
     #deuxiemeImage = CutImage(deuxiemeImage,180)
     return [premiereImage,deuxiemeImage]
 
-def GetImages(path,scaleFactor1=10,scaleFactor2=4,darkening=0.8,sampling=Image.Resampling.LANCZOS):
-    image = Image.open(path)
+def GetImages(image,scaleFactor1=10,scaleFactor2=4,darkening=0.8,sampling=Image.Resampling.LANCZOS):
+    if(type(image)==str):
+        image = Image.open(image)
     images = CropImage(image)
     premierImage = images[0]
     premierImage = ScaleImage(premierImage,scaleFactor=scaleFactor1,sampling=sampling)

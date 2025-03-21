@@ -1,0 +1,31 @@
+{% extends "informationTemplate.html" %}
+
+{% block main %}
+<table class="table table-bordered">
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Email</th>
+        <th scope="col">Name</th>
+        <th scope="col">Password</th>
+        <th scope = "col">Permissions</th>
+        <th scope = "col">Options</th>
+      </tr>
+    </thead>
+    <tbody>
+        {% for user in users %}
+        <tr>
+            <th scope="row">{{user.id}}</th>
+            <td>{{user.userEmail}}</td>
+            <td>{{user.userName}}</td>
+            <td>{{user.userPassword}}</td>
+            <td>{{user.permissions}}</td>
+            <td><button>Delete</button></td>
+
+        </tr>
+
+        {% endfor %}
+
+    </tbody>
+  </table>
+  {% endblock %}
