@@ -172,6 +172,49 @@ def GetUsers(request : Request):
 def Upload(request : Request):
     return templates.TemplateResponse("uploadFile.html",{"request":request})
 
+def TranslateInputType(value):
+            # Determine the input type based on the value type
+        if isinstance(value, str):
+            input_type = "text"
+        elif isinstance(value, int):
+            input_type = "number"
+        elif isinstance(value, float):
+            input_type = "number"
+        elif isinstance(value, bool):
+            input_type = "checkbox"
+        elif isinstance(value, str) and "-" in value:  # assuming it's a date string like 'YYYY-MM-DD'
+            input_type = "date"
+        else:
+            input_type = "text"  # Default fallback
+        return input_type
+
+
+def GetInfo(osd):
+    """
+    Prend un ocr avec des boites et renvoie des elements a display par jinja
+    """
+    ocr = []
+    for part in osd:
+        ocr.append(part["text"])
+    format = OCRF.TraitementZoneDict(ocr)
+    print(format)
+    elements = []
+    for key,value in format.items():
+        if(key=="productSales"):
+            elementFormat = "List"
+            elementList=[]
+            for sale in value:
+                elementList.append(sale)
+            element = {"format":elementFormat,"liste":elementList}
+            print(f"liste {element["liste"][0]}")
+        else:
+            elementFormat="single"
+            element = {"name":key,"value":value,"type":TranslateInputType(value),"format":elementFormat}
+        elements.append(element)
+    for element in elements:
+        print(f"Element : {element}")
+    return elements
+
 # Route to handle the image upload with redirection
 @app.post("/uploadfile")
 async def upload_file(request: Request, image: UploadFile = File(...)):
@@ -194,14 +237,17 @@ async def display_image(request: Request,image: UploadFile =File(...)):
         images = preImage.GetImages(image=image,scaleFactor1=imageParam["scaleFactor1"],scaleFactor2=imageParam["scaleFactor2"],darkening=imageParam["darkening"])
         ocrInfo=[]
         osd = OCRT.OCRWithBoxe(images)
-        for ocr in osd:
+        for part in osd:
             ajout = {}
-            ajout["text"]=ocr["text"]
-            ajout["image"]=convertImageB64(ocr["imageBoxe"])
+            ajout["text"]=part["text"]
+            ajout["image"]=convertImageB64(part["imageBoxe"])
             ajout["descrption"]="Image de l'OSD"
             ocrInfo.append(ajout)
-        img_str=convertImageB64(image)
-        return templates.TemplateResponse("showOCR.html",{"request":request,"ocrInfo":ocrInfo})
+        originalImage=convertImageB64(image)
+
+        elements=GetInfo(osd)
+
+        return templates.TemplateResponse("showOCR.html",{"request":request,"ocrInfo":ocrInfo,"originalImage":originalImage,"elements":elements})
         # Return the HTML with the image embedded as base64
         html_content = f'''
         <html>

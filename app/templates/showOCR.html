@@ -7,17 +7,48 @@
     {% for split in ocrInfo %}
     <div class="row">
         <!-- First image and text -->
-        <div class="col-md-6 mb-4">
-            <div class="card">
-                <img src="data:image/png;base64,{{ split.image }}" class="card-img-top" alt={{ split.description }}>
-                <div class="card-body">
+        <div class="col-md-10 mb-4">
+            <div class="card"style="width: 100%; height: auto;">
+                <div class="card-body d-flex">
+                    <img src="data:image/png;base64,{{split.image }}" class="card-img-top" alt={{ split.description }}>
                     <p class="card-text">{{ split.text }}</p>
                 </div>
             </div>
         </div>
     {% endfor %}
+    <img src="data:image/png;base64,{{originalImage}}" class="card-img-top" alt="Orginal Image">
+    <form action="/" method="post">
+        {% for element in elements %}
+        {% if element.format=="single" %}
+        <!-- Code for True condition -->
+        <div class="container">
+            <div class="row">
+              <div class="col-12">
+                <div class="form-group">
+                  <label for="{{ element.name }}" class="col-form-label">{{ element.name }}:</label>
+                  <input type="{{ element.type }}" id="{{ element.name }}" name="{{ element.name }}" value="{{ element.value }}" class="form-control" />
+                </div>
+              </div>
+            </div>
+          </div>
+        {% else %}
+        <!-- Code for False condition -->
+         {% for sale in element.liste %}
+         <label class="col-form-label">Produit:
+            <input type="text" id="{{ sale.nameId }}" name="{{ sale.nameId }}" value="{{ sale.productName }}" class="form-control" />
+            <input type="number" id="{{ sale.quantityID }}" name="{{ sale.quantityID }}" value="{{ sale.productQuant }}" class="form-control" />
+            <input type="number" id="{{ sale.priceID }}" name="{{ sale.priceID }}" value="{{ sale.productPrice }}" class="form-control" />
+            <button class="btn btn-secondary">Delete</button>
+         </label>
 
-    <a href="/" class="btn btn-secondary">Upload Another Image</a>
+         {% endfor %}
+         <button class ="btn btn-secondary">Add</button>
+        {% endif %}
+
+        {% endfor %}
+        <button type="submit">Valide</button>
+    </form>
+
+    <a href="/uploadfile" class="btn btn-secondary">Upload Another Image</a>
 </div>
 
-{% endblock %}
