@@ -16,8 +16,10 @@
             </div>
         </div>
     {% endfor %}
+</div>
+<div class="container">
     <img src="data:image/png;base64,{{originalImage}}" class="card-img-top" alt="Orginal Image">
-    <form action="/" method="post">
+    <form action="/uploadfile" method="post">
         {% for element in elements %}
         {% if element.format=="single" %}
         <!-- Code for True condition -->
@@ -32,23 +34,79 @@
             </div>
           </div>
         {% else %}
+        <div id ="productsContainer">
         <!-- Code for False condition -->
          {% for sale in element.liste %}
-         <label class="col-form-label">Produit:
-            <input type="text" id="{{ sale.nameId }}" name="{{ sale.nameId }}" value="{{ sale.productName }}" class="form-control" />
-            <input type="number" id="{{ sale.quantityID }}" name="{{ sale.quantityID }}" value="{{ sale.productQuant }}" class="form-control" />
-            <input type="number" id="{{ sale.priceID }}" name="{{ sale.priceID }}" value="{{ sale.productPrice }}" class="form-control" />
-            <button class="btn btn-secondary">Delete</button>
-         </label>
-
+         <div class="product-item" id="product_{{ sale.index }}">
+            <div class="container">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="produit_{{ sale.index }}" class="col-form-label">Produit:</label>
+                            <input type="text" id="produit_{{ sale.index }}" name="produit_{{ sale.index }}" value="{{ sale.productName }}" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="quantity_{{ sale.index }}" class="col-form-label">Quantity:</label>
+                            <input type="number" id="quantity_{{ sale.index }}" name="quantity_{{ sale.index }}" value="{{ sale.productQuant }}" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label for="price_{{ sale.index }}" class="col-form-label">Price:</label>
+                            <input type="number" id="price_{{ sale.index }}" name="price_{{ sale.index }}" value="{{ sale.productPrice }}" class="form-control" />
+                        </div>
+                    </div>
+                    <!--<button>Delete</button> TODO rendre le boutton visuel et fonctionnel-->
+                </div>
+            </div>
+        </div>
          {% endfor %}
-         <button class ="btn btn-secondary">Add</button>
+        </div>
+        <button type="button" id="addProductBtn" class="btn btn-secondary">Add Product</button>
         {% endif %}
 
         {% endfor %}
-        <button type="submit">Valide</button>
+        <button class ="btn btn-primary btn-lg submit">Valide</button>
     </form>
 
-    <a href="/uploadfile" class="btn btn-secondary">Upload Another Image</a>
+    <a href="/uploadfile" class="btn btn-secondary btn-sm">Upload Another Image</a>
 </div>
+    
 
+<script>
+    document.getElementById('addProductBtn').addEventListener('click', function() {
+        // Get the container where products are listed
+        const container = document.getElementById('productsContainer');
+
+        // Clone the first product's input fields to create a new product form
+        const productItem = container.querySelector('.product-item');
+
+        if (productItem) {
+            const newProductItem = productItem.cloneNode(true);
+
+            // Find the number of existing products and update the new product's fields accordingly
+            const currentProductCount = container.querySelectorAll('.product-item').length + 1;
+
+            // Update IDs and names for the new product item to keep them unique
+            newProductItem.id = `product_${currentProductCount}`;
+            newProductItem.querySelector('input[name^="produit"]').name = `produit_${currentProductCount}`;
+            newProductItem.querySelector('input[name^="quantity"]').name = `quantity_${currentProductCount}`;
+            newProductItem.querySelector('input[name^="price"]').name = `price_${currentProductCount}`;
+
+            // Clear the values for the new product fields
+            newProductItem.querySelector('input[name^="produit"]').value = '';
+            newProductItem.querySelector('input[name^="quantity"]').value = '';
+            newProductItem.querySelector('input[name^="price"]').value = '';
+
+            // Append the new product form to the container
+            container.appendChild(newProductItem);
+        }
+    });
+</script>
+{% endblock %}
+
+{% block script %}
+
+{% endblock %}

@@ -19,7 +19,7 @@ def create_db_engine():
     print(DATABASE_URL)  # Optional: For debugging
 
     # Create the engine and return it
-    return create_engine(DATABASE_URL)
+    return create_engine(DATABASE_URL,echo=True)
 
 # Create the engine and session factory only when needed
 engine = None

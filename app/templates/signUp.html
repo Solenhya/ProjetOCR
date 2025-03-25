@@ -15,16 +15,20 @@
                         <h5>Connexion</h5>
                     </div>
                     <div class="card-body">
-                      <form id="login-form" method="POST" action="/auth/jwt/login">
+                      <form id="login-form" method="POST" action="/createUser">
                         <div class="mb-3">
                             <label for="entreremail" class="form-label">Email address</label>
-                            <input type="email" class="form-control" id="entreremail" placeholder="name@example.com">
+                            <input type="email" name="userEmail" class="form-control" id="entreremail" placeholder="name@example.com">
                           </div>
                           <div class="mb-3">
                             <label for="motdepasse" class="form-label">mot de passe</label>
-                            <input type="password" class="form-control" id="motdepasse" placeholder="password"></input>
+                            <input type="password" class="form-control" id="motdepasse" name = "userPassword" placeholder="password"></input>
                           </div>
-                          <a type="submit" href="#" class="btn btn-primary">Se connecter</a>
+                          <div class="mb-3">
+                            <label for="confirm_password" class="form-label">Comfirmer le mot de passe</label>
+                            <input type="password" name ="confirm_password" class="form-control" id="confirm_password" placeholder="Comfirm password"></input>
+                          </div>
+                          <button type="submit" class="btn btn-primary">Se connecter</a>
                       </form>
                     </div>
                   </div>
@@ -44,7 +48,7 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', path='/js/login.js') }}"></script>
+    <script src="{{ url_for('static', path='js/signUp.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

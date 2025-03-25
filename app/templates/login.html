@@ -18,14 +18,16 @@
                       <form id="login-form" method="POST" action="/login">
                         <div class="mb-3">
                             <label for="exampleFormControlInput1" class="form-label">Email address</label>
-                            <input type="email" class="form-control" id="exampleFormControlInput1" placeholder="name@example.com">
+                            <input type="email" name="username" class="form-control" id="exampleFormControlInput1" placeholder="name@example.com">
                           </div>
                           <div class="mb-3">
                             <label for="exampleFormControlTextarea1" class="form-label">mot de passe</label>
-                            <input type="password" class="form-control" id="exampleFormControlTextarea1" placeholder="password"></input>
+                            <input type="password" name = "password" class="form-control" id="exampleFormControlTextarea1" placeholder="password"></input>
                           </div>
-                          <a type="submit" href="#" class="btn btn-primary">Se connecter</a>
+                          <button type="submit" class="btn btn-primary">Se connecter</button>
+                          <a type="button" href="/signUp" class="btn btn-primary">Creer un compte</a>
                       </form>
+
                     </div>
                   </div>
             </div>
@@ -44,7 +46,6 @@
         </div>
     </div>
 
-    <script src="{{ url_for('static', path='/js/login.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

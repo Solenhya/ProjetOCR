@@ -48,10 +48,12 @@ def GetDestinator(ligne):
         return(match.group(0))
 
 def GetTotal(ligne):
-    pattern = r"(?i)(?<=Total\s)[0-9.]+"
+    pattern = r"(?i)(?<=Total\s)[0-9.,]+"
     match = re.search(pattern,ligne)
     if match:
+
         totalPrice = ConvertPrice(match.group(0))
+        print(f"totalFound : {match.group(0)} convert to {totalPrice}")
         return(totalPrice)
 
 def GetAddress(ligne):

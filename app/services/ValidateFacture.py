@@ -79,6 +79,6 @@ def ValidateFacture(facture,qrInfo):
     if(not ValidatePrice(facture)):
         return "Erfacture price non Egale"
     if(not ValidateQR(facture,qrInfo)):
-        print("Erreur de validation qr forcer")
-        #return "Erfacture info non validé qrCode"
+        #print("Erreur de validation qr forcer")
+        return "Erfacture validationQR"
     return "Success"

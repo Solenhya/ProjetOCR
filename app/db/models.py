@@ -15,7 +15,7 @@ class Facture(Base):
     originDoc = Column(String)
     proprietorId = Column(Integer,ForeignKey("users.id")) #Qui a importer cette facture
     request = Column(Integer,ForeignKey("OCRrequests.id"))
-    fromUser = relationship("User",back_populates="imported_factures")
+    from_user = relationship("User",back_populates="imported_factures")
     facture_sales = relationship("Sale",back_populates="facture")
     client = relationship("Client",back_populates="factures_client")
     facture_request = relationship("RequestOCR",back_populates="facture")
@@ -51,9 +51,10 @@ class RequestOCR(Base):
     statusDB = Column(String)
     resultDB = Column(String)
     timeEnd = Column(Date)
-
+    user = Column(Integer,ForeignKey("users.id"))
     saved_error = relationship("Error",back_populates="from_request")
     facture = relationship("Facture",back_populates="facture_request")
+    from_user = relationship("User",back_populates="requests_made")
 
 class User(Base):
     __tablename__="users"
@@ -62,7 +63,8 @@ class User(Base):
     userEmail = Column(String)
     userPassword=Column(String)
     userRight = Column(String)
-    imported_factures = relationship("Facture",back_populates="fromUser")
+    imported_factures = relationship("Facture",back_populates="from_user")
+    requests_made= relationship("RequestOCR",back_populates="from_user")
 
 class Error(Base):
     """Table pour enregistrer lorsqu'il y a eu une erreur détécter dans le process et l'emplacement de l'image a retraiter"""
