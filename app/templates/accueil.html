@@ -1,0 +1,48 @@
+{% extends "connectedTemplate.html" %}
+
+{% block main %}
+<div class="container mt-5">
+    <!-- Hero Section -->
+    <div class="text-center mb-4">
+        <h1>Welcome to the OCR Service</h1>
+        <p class="lead">Use our Optical Character Recognition (OCR) service to easily extract text from images and PDFs.</p>
+        <p>
+            Upload your image or document, and let the OCR engine do the work of extracting the text for you.
+        </p>
+    </div>
+
+    <!-- Presentation Section -->
+    <div class="row text-center">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Fast and Reliable</h5>
+                    <p class="card-text">Our OCR service is designed to quickly and accurately extract text from various image formats.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Multiple Formats Supported</h5>
+                    <p class="card-text">We support a wide range of formats including JPG, PNG, and PDF for image and document processing.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Easy to Use</h5>
+                    <p class="card-text">Upload your file and get the extracted text instantly with our simple interface.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="{{ url_for('ocr_page') }}" class="btn btn-primary">Start OCR Now</a>
+    </div>
+</div>
+{% endblock %}

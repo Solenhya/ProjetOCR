@@ -1,5 +1,4 @@
 from .services import downloadBill as dwldB
-from .services import dataBaseFormat as dbF
 from .services import OCRTesseract as OCRT
 from .services import OCRFormat as OCRF
 from .services import prétraitementImage as preImage
@@ -10,7 +9,7 @@ import os
 #Call load dotenv avant d'en avoir besoin
 from dotenv import load_dotenv
 load_dotenv()
-from app.db import dataBaseManager,table_creation
+from .db import dataBaseManager,table_creation
 import time
 from PIL import Image
 
@@ -39,7 +38,12 @@ app = FastAPI(
     description="A simple API for facture ocr",
     version="0.1.0"
 )
-templates = Jinja2Templates(directory="templates")
+#templates = Jinja2Templates(directory="templates")
+#Pour docker qui a une architecture un peu differentes
+templates = Jinja2Templates(directory="app/templates")
+static_dir = "static"
+if not os.path.isdir(static_dir):
+    os.makedirs(static_dir)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 dbManager = dataBaseManager.DBManager()
 
@@ -74,8 +78,8 @@ def TraiteDwldFactures():
         raise FileNotFoundError("Data directory not found.")
     fileListe = os.listdir(data_path)
     
-    manager = dbF.AZdbManager("fabien")
-    manager.CreateTable()
+    #manager = dbF.AZdbManager("fabien")
+    #manager.CreateTable()
     taille = len(fileListe)
     bloc=20
     traité = 0
@@ -83,7 +87,7 @@ def TraiteDwldFactures():
     print(f"Traitement de {taille} fichiers de facture")
     errors =[]
     for i in tqdm(range(taille)):
-        erreur = TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i])
+        erreur = ""#TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i]) TODO REfacto
         if erreur!="Success":
             errors.append(erreur)
             nbErreur+=1
@@ -94,7 +98,7 @@ def TraiteDwldFactures():
     with open("Erreurs.txt", "w") as file:
     # Write each message to the file with a newline
         file.writelines(f"{message}\n" for message in errors)
-    manager.Disconnect()
+    #manager.Disconnect()
 
 def TraiteFacture(path,dbM,fileName):
     existingFacture = dbM.GetFactureDoc(fileName)
@@ -151,6 +155,15 @@ async def homePage(request : Request,token: Optional[str] = Cookie(None)):
     user = auth.get_current_user(token)
     return templates.TemplateResponse("uploadFile.html", {"request": request, "user": user})
 
+@app.get("/home")
+async def ConnectedHome(request : Request,token: Optional[str]=Cookie(None)):
+    auth.get_current_user(token)
+    return templates.TemplateResponse("accueil.html",{"request":request})
+
+@app.get("/list")
+async def HomeList(request : Request,token:Optional[str]=Cookie(None)):
+    auth.get_current_user(token)
+    return templates.TemplateResponse("accueilListe.html",{"request":request})
 
 @app.get("/GetAvailableFiles")
 def GetAvailableFiles():
@@ -346,6 +359,12 @@ async def GetToken(request:Request,form_data: OAuth2PasswordRequestForm=Depends(
         return templates.TemplateResponse("error.html",{"request":request})
     response = RedirectResponse(url="/", status_code=HTTP_303_SEE_OTHER)
     response.set_cookie(key="token", value=auth_value["access_token"])
+    return response
+
+@app.get("/disconnect")
+async def disconnect(request : Request):
+    response = RedirectResponse(url="/login",status_code=HTTP_303_SEE_OTHER)
+    response.delete_cookie(key="token")
     return response
 
 #Partie erreur

@@ -1,9 +1,10 @@
-from app.db import connection
-from app.db.models import User
+from ..db import connection
+from ..db.models import User
 
 def get_user(userEmail):
     session = connection.get_session()
     user = session.query(User).filter_by(userEmail = userEmail).first()
+    session.rollback()
     session.close()
     return user
 

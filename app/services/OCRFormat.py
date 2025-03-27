@@ -1,5 +1,4 @@
 import re
-from . import dataBaseFormat as dbF
 from tqdm import tqdm
 def GetName(ligne):
     pattern = r"(?<=INVOICE\s)FAC\S*"
@@ -15,7 +14,7 @@ def GetDate(ligne):
     if match:
         return(match.group(0))
     
-def GetProductLigne(ligne,dict=False):
+def GetProductLigne(ligne):
     #On determine si il s'agit d'une ligne de prix par la présence de chiffre x chiffre
     patternVerification = r"\d+\s*x\s*\d+"
     matchVeri = re.search(patternVerification,ligne)
@@ -24,11 +23,8 @@ def GetProductLigne(ligne,dict=False):
         match = re.search(patternText, ligne)
         productPrice = ConvertPrice(match.group(3))
         productQuant = int(match.group(2))
-        sale = dbF.productSale(productQuant,productPrice,match.group(1).rstrip())
-        if dict:
-            #Renvoie le produit et sur le group 1 retire les characters trailing
-            return {"productName":match.group(1).rstrip(),"productQuant":int(match.group(2)),"productPrice":productPrice}
-        return sale
+        return {"productName":match.group(1).rstrip(),"productQuant":int(match.group(2)),"productPrice":productPrice}
+
 
 
 def GetEmail(ligne):
@@ -66,68 +62,6 @@ def GetAddress(ligne):
     if match2:
         return ligne
 
-
-def SimpleTreatments(text):
-    name = ""
-    date = ""
-    destinator = ""
-    email=""
-    address=""
-    Sales = []
-    total = ""
-    for ligne in text:
-        tName = GetName(ligne)
-        if tName:
-            name = tName
-        tDate = GetDate(ligne)
-        if tDate:
-            date = tDate
-        tDest = GetDestinator(ligne)
-        if tDest:
-            destinator=tDest
-        tTotal = GetTotal(ligne)
-        if tTotal:
-            total=tTotal
-        sale = GetProductLigne(ligne)
-        if sale:
-            Sales.append(sale)
-        tAddress = GetAddress(ligne)
-        if tAddress:
-            address+=" "+tAddress
-        temail = GetEmail(ligne)
-        if temail:
-            email=temail
-        
-    facture = dbF.facture(name,date,destinator,email,address,Sales,total,None)
-    return facture
-    #return{"name":name,"date":date,"destinator":destinator,"Sales":Sales,"email":email,"address":adress,"total":total}
-
-#Prend en parametre des lignes extraite d'une zone de document et insere la data dans la facture
-#Ecrase les valeurs unique
-def ZoneAdd(text,facture:dbF.facture):
-    for ligne in text:
-        tName = GetName(ligne)
-        if tName:
-            facture.billName = tName
-        tDate = GetDate(ligne)
-        if tDate:
-            facture.date = tDate
-        tDest = GetDestinator(ligne)
-        if tDest:
-            facture.destinator=tDest
-        tTotal = GetTotal(ligne)
-        if tTotal:
-            facture.pricetotal=tTotal
-        sale = GetProductLigne(ligne)
-        if sale:
-            facture.productSales.append(sale)
-        tAddress = GetAddress(ligne)
-        if tAddress:
-            facture.address+=" "+tAddress
-        temail = GetEmail(ligne)
-        if temail:
-            facture.email=temail
-
 def ZoneAddDict(text,dict):
     for ligne in text:
         tName = GetName(ligne)
@@ -156,40 +90,12 @@ def ZoneAddDict(text,dict):
         if temail:
             dict["email"]=temail
 
-#Prend en parametres une liste de zone traiter par OCR pour creer une facture unique a partir
-def TraitementZone(listeZones,qrInf):
-    facture = dbF.facture(billName="",date="",destinator="",email="",address="",productSales=[],pricetotal="",qrInfo=qrInf)
-    for zone in listeZones:
-        ZoneAdd(zone,facture)
-    return facture
 
 def TraitementZoneDict(listeZones):
     retour = {"billName":"","date":"","destinator":"","email":"","address":"","productSales":[],"pricetotal":""}
     for zone in listeZones:
         ZoneAddDict(zone,retour)
     return retour
-
-#Valide tout les actes de validation et renvoi un dictionnaire avec les resultats
-def ValidateFactureComplete(facture:dbF.facture):
-    retour = {"fullNess":"Success","price":"Success","qr":"Success"}
-    if(not facture.ValidateFullness()):
-        retour["fullNess"]= "Erfacture Non complete"
-    if(not facture.validatePrice()):
-        retour["price"]= "Erfacture price non Egale"
-    if(not facture.validateQR()):
-        retour["qr"]="Erfacture info non validé qrCode"
-    return retour
-
-#Fait les validation possible a partir de la facture
-def ValidateFacture(facture:dbF.facture):
-    if(not facture.ValidateFullness()):
-        return "Erfacture Non complete"
-    if(not facture.validatePrice()):
-        return "Erfacture price non Egale"
-    if(not facture.validateQR()):
-        tqdm.write("Erreur de validation qr forcer")
-        #return "Erfacture info non validé qrCode"
-    return "Success"
 
 def ConvertPrice(priceText:str):
     # Trouve tout les chiffres pour retirer la virgule

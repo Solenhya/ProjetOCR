@@ -1,8 +1,8 @@
 from fastapi import HTTPException , status
 from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
-from app.userManagement.security import verify_password, create_access_token
-from app.userManagement.userAccess import get_user
+from .security import verify_password, create_access_token
+from .userAccess import get_user
 from jose import JWTError,jwt
 from typing import Optional
 import os

@@ -1,14 +1,17 @@
-# Use Python 3.11 as the base image
-FROM python:3.11-slim
+# Use Python 3.12 as the base image
+FROM python:3.12-slim
 
 # Set working directory
 WORKDIR /app
 
-# Install Tesseract OCR and other dependencies
+# Install Tesseract OCR and other dependencies git pour pip install qui est parfois fais via gitub :S libgl1 pour cv2 libpqDev pour psycopg2 libzbar0 build essential a gcc (pour build du code C) (et permettre a psycopg2 de fonctionner)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     git\
     libpq-dev \
+    libgl1-mesa-glx \
+    libzbar0 \
+    build-essential \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

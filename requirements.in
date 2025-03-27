@@ -1,5 +1,5 @@
 pillow
-tesseract
+pytesseract
 requests
 pandas
 opencv-python
@@ -9,5 +9,7 @@ sqlalchemy
 numpy
 fastapi[standard]
 passlib
-jose
+python-jose==3.4.0
 bcrypt==4.0.1
+tqdm
+psycopg2

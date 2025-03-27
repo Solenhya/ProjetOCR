@@ -1,5 +1,5 @@
-from app.db.connection import get_session
-from app.db.models import Facture,Client,Sale,User,RequestOCR,Error
+from .connection import get_session
+from .models import Facture,Client,Sale,User,RequestOCR,Error
 from sqlalchemy import func
 class DBManager:
     def __init__(self):

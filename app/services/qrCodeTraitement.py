@@ -1,6 +1,5 @@
 from pyzbar.pyzbar import decode
 from PIL import Image
-from . import dataBaseFormat as dbF
 import re
 
 # Function to parse the data into a dictionary
@@ -20,23 +19,10 @@ def GetQRData(image):
     #Si on a donner un string on doit load l'image
     if(type(image)==str):
         image = Image.open(image)
-        
     code = decode(image)
     if(len(code)>0):
         decoded_data = code[0].data.decode('utf-8')
         return parse_qr_data(decoded_data)
-    return None
-
-def GetQRInfo(imagePath):
-    data = GetQRData(imagePath)
-
-    if data:
-        values = {"facName":data["INVOICE"],"facDate":data["DATE"],"custBirth":"","custGender":data["CUST"][0]}
-        ligne = data["CUST"]
-        reg = r"(?<=birth\s).+"
-        match = re.search(reg,ligne)
-        values["custBirth"]=match.group(0)
-        return dbF.QRInfo(values["facName"],values["facDate"],values["custGender"],values["custBirth"])
     return None
 
 def GetQRInfoDict(imagePath):
