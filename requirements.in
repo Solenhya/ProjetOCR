@@ -1,0 +1,13 @@
+pillow
+tesseract
+requests
+pandas
+opencv-python
+pillow
+pyzbar
+sqlalchemy
+numpy
+fastapi[standard]
+passlib
+jose
+bcrypt==4.0.1

@@ -1,10 +1,10 @@
-import app.services.downloadBill as dwldB
-import app.services.dataBaseFormat as dbF
-import app.services.OCRTesseract as OCRT
-import app.services.OCRFormat as OCRF
-import app.services.prétraitementImage as preImage
-import app.services.qrCodeTraitement as QRT
-import app.services.ValidateFacture as ValidateF
+from .services import downloadBill as dwldB
+from .services import dataBaseFormat as dbF
+from .services import OCRTesseract as OCRT
+from .services import OCRFormat as OCRF
+from .services import prétraitementImage as preImage
+from .services import qrCodeTraitement as QRT
+from .services import ValidateFacture as ValidateF
 from pathlib import Path
 import os
 #Call load dotenv avant d'en avoir besoin
@@ -25,10 +25,11 @@ from starlette.status import HTTP_303_SEE_OTHER
 import io
 import base64
 
-from app.utils import jinjaTranslation
-from app.utils.imageEncoding import convertImageB64
-from app.utils.executionTime import measure_execution_time
-from app.userManagement import auth,security , userAccess
+from .utils import jinjaTranslation
+from .utils.imageEncoding import convertImageB64
+from .utils.executionTime import measure_execution_time
+from .utils import saveError
+from .userManagement import auth,security , userAccess
 
 from pydantic import BaseModel
 from typing import Optional
@@ -52,6 +53,9 @@ def GetPathToData():
     data_dir = os.path.join(parent_dir, 'data')  # Path to the 'data' folder
     # Renvoi le chemin si le dossier existe
     if os.path.exists(data_dir) and os.path.isdir(data_dir):
+        return data_dir
+    else:
+        os.makedirs(data_dir)
         return data_dir
 
 
@@ -142,11 +146,9 @@ def TraiteFactureFile(file,origin,fileName,user,manager=None):
 @app.get("/")
 async def homePage(request : Request,token: Optional[str] = Cookie(None)):
     print(token)
-    try:
-        user = auth.get_current_user(token)
-    except:
+    if not token:
         return RedirectResponse(url="/login", status_code=HTTP_303_SEE_OTHER)
-    
+    user = auth.get_current_user(token)
     return templates.TemplateResponse("uploadFile.html", {"request": request, "user": user})
 
 
@@ -165,18 +167,26 @@ users = [
 ]
 
 @app.get("/users")
-def GetUsers(request : Request):
+async def GetUsers(request : Request,token: Optional[str] = Cookie(None)):
     #TODO set users from dataBase
-    return templates.TemplateResponse("users.html",{"request":request,"users":users})
+    auth.get_current_user(token)#Renvoi une erreur qui est automatiquement traiter si l'authentification ne marche pas
+    users = userAccess.getAllUser()
+    listDict = []
+    for user in users:
+        print(f"user todict : {user.ToDict()}")
+        listDict.append(user.ToDict())
+    return templates.TemplateResponse("users.html",{"request":request,"users":listDict})
 
 @app.get("/uploadfile")
-def Upload(request : Request):
+async def Upload(request : Request,token: Optional[str] = Cookie(None)):
+    auth.get_current_user(token)
     return templates.TemplateResponse("uploadFile.html",{"request":request})
 
 # Route to display the image after upload (without saving locally)
 @app.post("/display-ocr", response_class=HTMLResponse)
-async def display_image(request: Request,image: UploadFile =File(...)):
+async def display_image(request: Request,image: UploadFile =File(...),token: Optional[str] = Cookie(None)):
     # Get the image data from the request state
+    auth.get_current_user(token)
     image_data = await image.read()
     
     if image_data:
@@ -205,14 +215,37 @@ async def display_image(request: Request,image: UploadFile =File(...)):
 
 
 @app.post("/autoOCR")
-async def autoOCR(request:Request,image: UploadFile =File(...)):
+async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[str] = Cookie(None)):
+    auth.get_current_user(token)
     image_data = await image.read()
-    
+    #TODO Implement error 400 for bad image and bad QRCode
     if image_data:
-        image = Image.open(io.BytesIO(image_data))
-        images , imageTime = measure_execution_time(preImage.GetImages,image, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
-        ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)  
-        qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,image)
+        requestDict = dbManager.GetRequestDict()
+        try:
+            image = Image.open(io.BytesIO(image_data))
+        except:
+            raise HTTPException(status_code=422,detail="Impossible de lire l'image")
+        try:
+            qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,image)
+        except:
+            #TODO Bug sur la base de données rajouter la colone pour la lecture du QRCode
+            raise HTTPException(status_code=422, detail="Erreur Serveur lors de la lecture du QRCode")  
+        try:
+            images , imageTime = measure_execution_time(preImage.GetImages,image, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
+        except:
+            saveLocation = saveError.SaveErrorImage(image)
+            requestDict["image"]["status"]="Erreur"
+            raise HTTPException(status_code=500, detail="Erreur Serveur lors du traitement de l'image")
+        requestDict["image"]["status"]="Success"
+        requestDict["image"]["time"]=imageTime
+        try:
+            ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)
+        except:
+            requestDict["ocr"]["status"]="Erreur"
+            raise HTTPException(status_code=500, detail="Erreur Serveur lors de l'ocr")  
+        requestDict["ocr"]["status"]="Success"
+        requestDict["ocr"]["time"]=ocrTime
+
         bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
 
 
@@ -293,9 +326,12 @@ async def Signup(request: Request):
 
 @app.post("/createUser")
 async def CreateUser(request: Request,userEmail:str = Form(...),userPassword:str = Form(...)):
-    #user = userAccess.get_user(userEmail=userEmail)
+    user = userAccess.get_user(userEmail=userEmail)
+    if user:
+        raise HTTPException(status_code=409, detail="L'utilisateur existe deja")
     hashed = security.get_password_hash(userPassword)
     userAccess.save_user(userEmail,hashed)
+    #TODO changer ça
     return{"usermail":userEmail,"password":hashed}
 
 @app.get("/login")

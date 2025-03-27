@@ -15,3 +15,10 @@ def save_user(userEmail,hashedPassword,userAccess="All"):
     session.add(user)
     session.commit()
     session.close()
+
+def getAllUser():
+    session = connection.get_session()
+    users = session.query(User).all()
+    for user in users:
+        print(f"user : {user}")
+    return users

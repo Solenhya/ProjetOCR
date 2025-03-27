@@ -66,6 +66,10 @@ class User(Base):
     imported_factures = relationship("Facture",back_populates="from_user")
     requests_made= relationship("RequestOCR",back_populates="from_user")
 
+    def ToDict(self):
+        retour = {"id": self.id, "userEmail": self.userEmail, "userName": self.userName, "userPassword": self.userPassword,"permissions":self.userRight}
+        return retour
+
 class Error(Base):
     """Table pour enregistrer lorsqu'il y a eu une erreur détécter dans le process et l'emplacement de l'image a retraiter"""
     __tablename__="erreurs"

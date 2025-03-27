@@ -51,6 +51,10 @@ class DBManager:
         timeEnd = requestDict["timeFinal"])
         return request
     
+
+    def GetRequestDict(self):
+        return {"image":{"status":"NotSet","time":"NotSet"},"ocr":{"status":"NotSet","time":"NotSet"},"formatage":{"status":"NotSet","time":"NotSet"},"db":{"status":"NotSet","time":"NotSet"}}
+
     def CreateError(self,gravity,result,origin,savedAs):
         erreur = Error(gravity=gravity,result=result,origin=origin,savedAs=savedAs)
         return erreur

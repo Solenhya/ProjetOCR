@@ -16,7 +16,7 @@ def create_db_engine():
     db_port = os.getenv("DBPORT", 5432)
     
     DATABASE_URL = f"postgresql://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}"
-    print(DATABASE_URL)  # Optional: For debugging
+    #print(DATABASE_URL)  # Optional: For debugging
 
     # Create the engine and return it
     return create_engine(DATABASE_URL,echo=True)
