@@ -5,7 +5,8 @@
 <p>
     {{info.result}}
 </p>
-<!--<img src="data:image/png;base64,{{info.image}}" class="card-img-top" alt={{ split.description }}> A rajouter éventuellement-->
-<button href="/uploadfile">Traité une autre facture</button>
 
+<form action="/uploadfile" method="GET">
+    <button type="submit">Traité une autre facture</button>
+</form>
 {% endblock %}

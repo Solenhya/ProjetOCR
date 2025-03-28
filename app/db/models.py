@@ -1,5 +1,5 @@
 from sqlalchemy.orm import declarative_base , relationship
-from sqlalchemy import MetaData , String , Column , Integer ,DateTime,Date , ForeignKey ,func
+from sqlalchemy import MetaData , String , Column , Integer ,DateTime,Date , ForeignKey ,func , Float
 from .base import Base
 
 
@@ -17,8 +17,8 @@ class Facture(Base):
     request = Column(Integer,ForeignKey("OCRrequests.id"))
     from_user = relationship("User",back_populates="imported_factures")
     facture_sales = relationship("Sale",back_populates="facture")
-    client = relationship("Client",back_populates="factures_client")
-    facture_request = relationship("RequestOCR",back_populates="facture")
+    client = relationship("Client",back_populates="factures_client",uselist=False)
+    facture_request = relationship("RequestOCR",back_populates="facture",uselist=False)
 
 class Client(Base):
     __tablename__ = "clients"
@@ -43,17 +43,17 @@ class RequestOCR(Base):
     id = Column(Integer,primary_key=True,autoincrement=True)
     date = Column(Date)
     statusPreImage = Column(String)
-    timePreImage = Column(Date)
+    timePreImage = Column(Float)
     statusOCR = Column(String)
-    timeOCR= Column(Date)
+    timeOCR= Column(Float)
     statusFormatage = Column(String)
-    timeFormatage = Column(Date)
+    timeFormatage = Column(Float)
     statusDB = Column(String)
-    resultDB = Column(String)
-    timeEnd = Column(Date)
+    timeDB = Column(Float)
+    timeEnd = Column(Float)
     user = Column(Integer,ForeignKey("users.id"))
     saved_error = relationship("Error",back_populates="from_request")
-    facture = relationship("Facture",back_populates="facture_request")
+    facture = relationship("Facture",back_populates="facture_request",uselist=False)
     from_user = relationship("User",back_populates="requests_made")
 
 class User(Base):
@@ -67,14 +67,14 @@ class User(Base):
     requests_made= relationship("RequestOCR",back_populates="from_user")
 
     def ToDict(self):
-        retour = {"id": self.id, "userEmail": self.userEmail, "userName": self.userName, "userPassword": self.userPassword,"permissions":self.userRight}
+        retour = {"id": self.id, "userEmail": self.userEmail, "userName": self.userName,"permissions":self.userRight}
         return retour
 
 class Error(Base):
     """Table pour enregistrer lorsqu'il y a eu une erreur détécter dans le process et l'emplacement de l'image a retraiter"""
     __tablename__="erreurs"
     id = Column(Integer,primary_key=True,autoincrement=True)
-    request_id = Column(Integer,ForeignKey("OCRrequests.id"))
+    request_id = Column(Integer,ForeignKey("OCRrequests.id"),nullable=True)
     gravity = Column(String) #Est ce que l'erreur 
     result = Column(String)
     origin = Column(String)

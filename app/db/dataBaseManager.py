@@ -1,6 +1,8 @@
 from .connection import get_session
 from .models import Facture,Client,Sale,User,RequestOCR,Error
 from sqlalchemy import func
+from datetime import date
+
 class DBManager:
     def __init__(self):
         self.session = get_session()
@@ -26,6 +28,16 @@ class DBManager:
             factureRetour.facture_sales.append(vente)
         return factureRetour
     
+    def CreateClient(self,session,dict,qrCode):
+        client = FindClient(session,dict,qrCode)
+        if client:
+            return client
+        clientName = dict["destinator"]
+        client = Client(name=clientName, email = dict["email"],
+        gender = qrCode["custGender"],
+        birth = qrCode["custBirth"])
+        return client
+    
     def CreateClientSafe(self,dict,qrCode):
         client = self.FindClient(dict,qrCode)
         if client:
@@ -47,13 +59,15 @@ class DBManager:
         statusFormatage = requestDict["formatage"]["status"],
         timeFormatage = requestDict["formatage"]["time"],
         statusDB = requestDict["db"]["status"],
-        resultDB = requestDict["db"]["time"],
-        timeEnd = requestDict["timeFinal"])
+        timeDB = requestDict["db"]["time"],
+        timeEnd = requestDict["tempsTotal"])
+        today = date.today()
+        request.date = today
         return request
     
 
     def GetRequestDict(self):
-        return {"image":{"status":"NotSet","time":"NotSet"},"ocr":{"status":"NotSet","time":"NotSet"},"formatage":{"status":"NotSet","time":"NotSet"},"db":{"status":"NotSet","time":"NotSet"}}
+        return {"image":{"status":"NotSet","time":0},"ocr":{"status":"NotSet","time":0},"formatage":{"status":"NotSet","time":0},"db":{"status":"NotSet","time":0},"tempsTotal":0}
 
     def CreateError(self,gravity,result,origin,savedAs):
         erreur = Error(gravity=gravity,result=result,origin=origin,savedAs=savedAs)
@@ -87,70 +101,83 @@ class DBManager:
         self.session.commit()
         return factureRetour , "Success"
 
-    
-    #Partie recuperation d'élement
-    def FindClient(self,dict,qrInfo):
-        clientEmail = dict["email"]
-        client = self.GetClientByEmail(clientEmail)
-        return client
+    def CloseConnection(self):
+        self.session.close()
+    def RemakeSession(self):
+        self.session = get_session()
+
 
     #Partie verification qui nécessite la base de données
+
+    def ValidateFacture(self,facture,qrInfo):
+        presence = self.VerifyFacturePresence(facture["billName"])
+        if presence["status"]!="Success":
+            return presence
+        client = self.VerifyClient(facture["destinator"],facture["email"],qrInfo["custGender"],qrInfo["custBirth"])
+        #Si le client est bon il s'agit que de Succes
+        return client
+
     def VerifyClient(self,clientName,clientEmail,clientGender,clientBirth):
-        clientFound = self.GetClientByEmail(clientEmail)
-        if(clientFound.name!=clientName):
-            message = f"Erreur Client : {clientEmail} name in base is {clientFound.name} but in facture {clientName}"
-            return message
-        if(clientFound.gender!=clientGender):
-            message = f"Erreur Client : {clientEmail} gender in base is {clientFound.gender} but in facture {clientGender}"
-            return message
-        if(clientBirth!=clientBirth):
-            message = f"Erreur Client : {clientEmail} birth in base is {clientFound.birth} but in facture {clientBirth}"
-            return message
-        return "Success"
+        session = get_session()
+        clientFound = GetClientByEmail(session,clientEmail)
+        if(clientFound):    
+            if(clientFound.name!=clientName):
+                message = {"status":"Erreur Client","detail": f"{clientEmail} name in base is {clientFound.name} but in facture{clientName}"}
+                session.close()
+                return message
+            if(clientFound.gender!=clientGender):
+                message = {"status":"Erreur Client","detail": f"{clientEmail} gender in base is {clientFound.gender} but in facture {clientGender}"}
+                session.close()
+                return message
+            if(clientBirth!=clientBirth):
+                message = {"status":"Erreur Client","detail" :f"{clientEmail} birth in base is {clientFound.birth} but in facture {clientBirth}"}
+                session.close()
+                return message
+        session.close()
+        return {"status":"Success"}
 
     def VerifyFacturePresence(self,factureName):
-        facture = self.GetFactureByName(factureName)
+        session = get_session()
+        facture = GetFactureByName(session,factureName)
         if facture:
-            message = f"Erreur Facture : {factureName} is already in base"
+            message = {"status":"Erreur Facture","detail": f"{factureName} is already in base"}
+            session.close()
             return message
-        return "Success"
-    
-    #Partie Getter
-    def GetClientByName(self,clientName)->Client:
-        return self.session.query(Client).filter_by(name = clientName).first()
-    
-    def GetClientByEmail(self,clientemail):
-        return self.session.query(Client).filter_by(email=clientemail).first()
-    
-    def GetFactureByName(self,factureName):
-        return self.session.query(Facture).filter_by(name=factureName).first()
-    
+        session.close()
+        return {"status":"Success"}
 
-def EnterRequestSession(info):
-    
-    pass
+    #Partie recuperation d'élement
+def FindClient(session,dict,qrInfo):
+    clientEmail = dict["email"]
+    client = GetClientByEmail(session,clientEmail)
+    return client
 
-def SuccessStichAdd(facture,client,user,request):
+#Partie Getter
+def GetClientByName(session,clientName)->Client:
+    return session.query(Client).filter_by(name = clientName).first()
+    
+def GetClientByEmail(session,clientemail)->Client:
+    return session.query(Client).filter_by(email=clientemail).first()
+    
+def GetFactureByName(session,factureName)->Facture:
+    return session.query(Facture).filter_by(name=factureName).first()
+    
+def GetUserByEmail(session,userEmail):
+    return session.query(User).filter_by(userEmail=userEmail).first()
+
+def EnterFacture(session,facture:Facture,user:User,client,erreur:Error=None):
     facture.client = client
-    facture.fromUser = user
-    facture.facture_request = request
+    facture.from_user = user
+    SessionCommitItem(session,facture)
+
+def EnterError(session,request:RequestOCR,erreur:Error,user:User):
+    request.saved_error=[erreur]
     request.from_user=user
-    SessionCommitItem(facture)
+    SessionCommitItem(session,request)
 
-def ErrorStitchAdd(erreur,request,user,facture=None,client=None):
-    erreur.from_request = request
-    request.from_user = user
-    if facture and client:
-        facture.client = client
-        facture.fromUser = user
-        facture.facture_request = request
-    SessionCommitItem(erreur)
+def AddUser(session,user):
+    SessionCommitItem(session,user)
 
-def AddUser(user):
-    SessionCommitItem(user)
-
-def SessionCommitItem(item):
-    session = get_session()
+def SessionCommitItem(session,item):
     session.add(item)
     session.commit()
-    session.close

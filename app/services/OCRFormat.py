@@ -25,8 +25,6 @@ def GetProductLigne(ligne):
         productQuant = int(match.group(2))
         return {"productName":match.group(1).rstrip(),"productQuant":int(match.group(2)),"productPrice":productPrice}
 
-
-
 def GetEmail(ligne):
     #Pattern d'email avec de la flexibilité pour les espace blanc
     pattern = r"Email\s+(.*?)$"
@@ -76,7 +74,7 @@ def ZoneAddDict(text,dict):
         tTotal = GetTotal(ligne)
         if tTotal:
             dict["pricetotal"]=tTotal
-        sale = GetProductLigne(ligne,dict=True)
+        sale = GetProductLigne(ligne)
         if sale:
             dict["productSales"].append(sale)
         tAddress = GetAddress(ligne)
@@ -95,7 +93,9 @@ def TraitementZoneDict(listeZones):
     retour = {"billName":"","date":"","destinator":"","email":"","address":"","productSales":[],"pricetotal":""}
     for zone in listeZones:
         ZoneAddDict(zone,retour)
+    print(f"retour : {retour}")
     return retour
+
 
 def ConvertPrice(priceText:str):
     # Trouve tout les chiffres pour retirer la virgule

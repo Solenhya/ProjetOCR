@@ -26,6 +26,10 @@ def DeleteTable():
     Base.metadata.drop_all(engine)
     print("Table Supprimer")
 
+def DeleteRequestTable():
+    engine = connection.get_engine()
+    RequestOCR.metadata.drop_all(engine, tables=[RequestOCR.__table__])
+
 def Check():
     engine = connection.get_engine()
     # Use the inspect module to check if the table exists

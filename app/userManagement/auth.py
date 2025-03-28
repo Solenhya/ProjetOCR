@@ -6,14 +6,15 @@ from .userAccess import get_user
 from jose import JWTError,jwt
 from typing import Optional
 import os
-
+from ..db import connection
 class Token(BaseModel):
     access_token: str
     token_type: str
 
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm):
     # Use your user verification logic here
-    user = get_user(form_data.username)
+    session = connection.get_session()
+    user = get_user(session,form_data.username)
     if not user or not verify_password(form_data.password, user.userPassword):
         raise HTTPException(status_code=401, detail="Incorrect username or password") 
     # Create and return token
