@@ -332,7 +332,102 @@ async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[s
         return templates.TemplateResponse("uploadValidate.html",{"request":request,"info":info})
 
     return HTMLResponse(content="<h1>No image uploaded yet!</h1>")
+
+# Image processing function extracted from autoOCR
+async def process_image(image,user,session):
+    #Creer un dictionnaire préremplis pour suivre la requete
+    requestDict = dbManager.GetRequestDict()
+
+    try:
+        qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,image)
+    except:
+            #TODO Bug sur la base de données rajouter la colone pour la lecture du QRCode
+        raise HTTPException(status_code=422, detail="Erreur Serveur lors de la lecture du QRCode")  
+        #Fait du traitement de l'image pour l'ocr
+    try:
+        images , imageTime = measure_execution_time(preImage.GetImages,image, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
+    except:
+        detail = "Erreur Serveur lors du traitement de l'image"
+        HandleError(session,requestDict,"image",image,detail,500,origin="Distant",user=user)
+    requestDict["image"]["status"]="Success"
+    requestDict["image"]["time"]=imageTime
+        #Fait l'ocr
+    try:
+        ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)
+    except Exception as e:
+        detail = f"Erreur Serveur lors de l'ocr {e}"
+        HandleError(session,requestDict,"ocr",image,detail,500,origin="Distant",user=user)
+    requestDict["ocr"]["status"]="Success"
+    requestDict["ocr"]["time"]=ocrTime
+        #Formate le text de l'ocr
+    try:
+        bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
+    except Exception as e:
+        detail = f"Erreur Serveur lors du formatage : {e}"
+        HandleError(session,requestDict,"formatage",image,detail,500,origin="Distant",user=user)
     
+    requestDict["formatage"]["status"]="Success"
+    requestDict["formatage"]["time"]=formatTime
+    timeToNow = formatTime+ocrTime+imageTime
+    #Valide la coherence de la facture
+    return {"bill":bill,"qrC":qrC,"requestDict":requestDict}
+
+
+        
+async def FinishProcess(bill,qrC,requestDict,session,user,previousTime):
+    
+    erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin="Distant")
+    if (erreurLocal!=None) and (erreurLocal.gravity=="Error"):
+        requestDict["formatage"]["status"]="Erreur"
+        requestOCR = dbManager.CreateRequest(requestDict)
+        dataBaseManager.EnterError(session,requestOCR,erreurLocal,user)
+        session.close()
+        raise HTTPException(status_code=422,detail="Erreur lors de la validation de la facture")
+    #Fait la validation de la facture comparativement au info de la base de donnée
+    start_time = time.time()
+    erreurDB = DoDataBaseValidation(image,bill,qrC,origin="Distant")
+    if (erreurDB != None) and (erreurDB.gravity=="Error"):
+        requestDict["db"]["status"]="Erreur"
+        requestOCR = dbManager.CreateRequest(requestDict)
+        dataBaseManager.EnterError(session,requestOCR,erreurDB,user)
+        session.close()
+        raise HTTPException(status_code=422,detail="Erreur la facture existe deja dans la base de donnée")
+        
+    #On creer les instance purrement objet
+    facture = dbManager.CreateFacture(bill,qrC,"Distant",None)
+    client = dbManager.CreateClient(session,bill,qrC)
+    try:
+        dataBaseManager.EnterFacture(session,facture,user,client)
+    except:
+        print("GROSS ERROR")
+        #TODO Gere le cas ou on arrive pas a inserer la facture
+        pass
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    requestDict["db"]["status"]="Success"
+    requestDict["db"]["time"]=elapsed_time
+    tempsTotal = previousTime+elapsed_time
+    requestDict["tempsTotal"]=tempsTotal
+    #On rerécupere la facture pour y accoller la requete final
+    requestOCR = dbManager.CreateRequest(requestDict)
+    facture = dataBaseManager.GetFactureByName(session,bill["billName"])
+    requestOCR.facture = facture
+    #Si il y a des erreurs non bloquante on les rajoute
+    erreurs = []
+    if erreurLocal:
+        erreurs.append(erreurLocal)
+    if erreurDB:
+        erreurs.append(erreurDB)
+    requestOCR.saved_error=erreurs
+    requestOCR.user=user
+    session.add(requestOCR)
+    session.commit()
+    session.close()
+    #Tout c'est bien passer on renvoie la page de resultat
+    info={"result":"Facture uploader avec success"}
+    return templates.TemplateResponse("uploadValidate.html",{"request":request,"info":info})#TODO
+
+
 def DoLocalValidation(image,dict,qrC,origin,filename=None):
     validation = ValidateF.ValidateFacture(dict,qrC)
     if(validation!="Success"):
