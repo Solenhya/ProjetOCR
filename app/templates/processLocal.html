@@ -1,0 +1,92 @@
+{% extends "connectedTemplate.html" %}
+
+{% block main %}
+<div class="container mt-5">
+    <h1>Invoice Processing</h1>
+    <p>Click "Start Processing" to begin processing invoices. You can stop at any time.</p>
+
+    <!-- Start Button -->
+    <button id="startButton" class="btn btn-primary">Start Processing</button>
+
+    <!-- Stop Button -->
+    <button id="stopButton" class="btn btn-danger" disabled>Stop Processing</button>
+
+    <p id = "generalInfo"></p>
+
+    <!-- Progress Bar -->
+    <div class="progress mt-4 progress-bar-container">
+        <div class="progress-bar" id="progress" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+    </div>
+
+    <!-- Status -->
+    <div id="status" class="mt-3">Initializing...</div>
+</div>
+
+{% endblock %}
+
+{% block lateScript %}
+ 
+<script>
+    let socket;
+    let stopRequested = false;
+
+    // Start button handler
+    document.getElementById("startButton").onclick = function() {
+        // Start WebSocket connection when user clicks "Start"
+        socket = new WebSocket("ws://localhost:8000/traiteDownload");
+
+        socket.onopen = function(event) {
+            console.log("WebSocket connection established.");
+            document.getElementById("status").textContent = "Connection established. Processing invoices...";
+            document.getElementById("startButton").disabled = true;
+            document.getElementById("stopButton").disabled = false;
+        };
+
+        socket.onmessage = function(event) {
+            const loadingState = JSON.parse(event.data);
+            document.getElementById("generalInfo").textContent = "Fichier Traite : "+loadingState.traite+" sur "+loadingState.taille+" nombre d'erreur : "+loadingState.nbErreur
+            // Update progress bar
+            const progress = (loadingState.traite / loadingState.taille) * 100;
+            document.getElementById("progress").style.width = progress + "%";
+            document.getElementById("progress").setAttribute("aria-valuenow", progress);
+
+            // Update status
+            document.getElementById("status").textContent = `Processed: ${loadingState.traite} / ${loadingState.taille} | Errors: ${loadingState.nbErreur}`;
+
+            // If processing is done
+            if (loadingState.traite === loadingState.taille) {
+                document.getElementById("status").textContent = "Processing complete!";
+            }
+        };
+
+        socket.onclose = function(event) {
+            console.log("WebSocket connection closed.");
+            if (event.code === 4000) {
+                document.getElementById("status").textContent = "Invalid token or session expired.";
+            } else if (event.code === 5000) {
+                document.getElementById("status").textContent = "An error occurred during processing.";
+            } else {
+                document.getElementById("status").textContent = "Processing completed or stopped.";
+            }
+
+            document.getElementById("startButton").disabled = false;
+            document.getElementById("stopButton").disabled = true;
+        };
+
+        socket.onerror = function(error) {
+            console.error("WebSocket error:", error);
+            document.getElementById("status").textContent = "WebSocket error occurred.";
+        };
+    };
+
+    // Stop button handler
+    document.getElementById("stopButton").onclick = function() {
+        if (!stopRequested) {
+            stopRequested = true;
+            document.getElementById("status").textContent = "Stopping the processing...";
+            socket.close(); // Close the WebSocket connection
+            document.getElementById("stopButton").disabled = true; // Disable the stop button after click
+        }
+    };
+</script>
+{% endblock %}

@@ -32,7 +32,6 @@ def GetInfo(format):
                 elementList.append(sale)
                 index+=1
             element = {"format":elementFormat,"liste":elementList}
-            print(f"liste {element["liste"][0]}")
         else:
             elementFormat="single"
             element = {"name":key,"value":value,"type":TranslateInputType(value),"format":elementFormat}

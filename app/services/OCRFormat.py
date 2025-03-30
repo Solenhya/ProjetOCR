@@ -47,7 +47,7 @@ def GetTotal(ligne):
     if match:
 
         totalPrice = ConvertPrice(match.group(0))
-        print(f"totalFound : {match.group(0)} convert to {totalPrice}")
+        #print(f"totalFound : {match.group(0)} convert to {totalPrice}")
         return(totalPrice)
 
 def GetAddress(ligne):
@@ -93,7 +93,6 @@ def TraitementZoneDict(listeZones):
     retour = {"billName":"","date":"","destinator":"","email":"","address":"","productSales":[],"pricetotal":""}
     for zone in listeZones:
         ZoneAddDict(zone,retour)
-    print(f"retour : {retour}")
     return retour
 
 

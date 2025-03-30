@@ -19,7 +19,7 @@ def create_db_engine():
     print(DATABASE_URL)  # Optional: For debugging
 
         # Create the engine
-    engine = create_engine(DATABASE_URL, client_encoding="utf8",echo=True)
+    engine = create_engine(DATABASE_URL, client_encoding="utf8")#,echo=True)
 
 
     # Return the engine

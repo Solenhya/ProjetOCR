@@ -15,7 +15,7 @@ from PIL import Image
 
 from tqdm import tqdm
 
-from fastapi import FastAPI , Request , File , UploadFile , Form ,Cookie ,Depends, HTTPException
+from fastapi import FastAPI , Request , File , UploadFile , Form ,Cookie ,Depends, HTTPException ,WebSocket,WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
 from fastapi.responses import RedirectResponse,HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -33,6 +33,7 @@ from .userManagement import auth,security , userAccess
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date
+import json
 
 app = FastAPI(
     title="OCR Facture",
@@ -73,79 +74,73 @@ def GetFullPath(filename):
         return full_path
     print(f"erreur dans le chemin : {full_path}")
 
-#Fait le telechargements des fichier dans le dossier data
-def TraiteDwldFactures():
-    data_path = GetPathToData()
-    if data_path is None:
-        raise FileNotFoundError("Data directory not found.")
-    fileListe = os.listdir(data_path)
-    
-    #manager = dbF.AZdbManager("fabien")
-    #manager.CreateTable()
-    taille = len(fileListe)
-    bloc=20
-    traité = 0
-    nbErreur=0
-    print(f"Traitement de {taille} fichiers de facture")
-    errors =[]
-    for i in tqdm(range(taille)):
-        erreur = ""#TraiteFacture(GetFullPath(fileListe[i]),manager,fileListe[i]) TODO REfacto
-        if erreur!="Success":
-            errors.append(erreur)
-            nbErreur+=1
-        traité+=1
-        if(traité%bloc==0):
-            erreurpourc = (nbErreur/traité)*100
-            tqdm.write(f"{traité}/{taille} fichiers traité avec un pourcentage d'erreur de {erreurpourc}% {nbErreur} et {traité}")
-    with open("Erreurs.txt", "w") as file:
-    # Write each message to the file with a newline
-        file.writelines(f"{message}\n" for message in errors)
-    #manager.Disconnect()
-
-def TraiteFacture(path,dbM,fileName):
-    existingFacture = dbM.GetFactureDoc(fileName)
-    if(len(existingFacture)>0):
-        tqdm.write(f"Facture {fileName} deja scanner")
-        return("Success")
-    images = preImage.GetImages(path,scaleFactor1=5,scaleFactor2=1,darkening=0.5)
-    ocr = OCRT.OCRMultiple(images)
-    qrC = QRT.GetQRInfo(path)
-    bill = OCRF.TraitementZoneDict(ocr)
-    bill = dbF.facture.fromDict(bill)
-    bill.qrInfo = qrC
-    validation = OCRF.ValidateFacture(bill)
-    if(validation!="Success"):
-        message = f"Erreur {validation} dans la facture {fileName}"
-        tqdm.write(message)
-        return message
-    result = dbM.ManageFacture(bill,fileName)
-    if(result!="Success"):
-        message = f"Erreur {result} dans la facture {fileName}"
-        tqdm.write(message)
-        return message
-    return "Success"
-
-
 imageParam = {"scaleFactor1":5,"scaleFactor2":1,"darkening":0.5}
 
-def TraiteFactureFile(file,origin,fileName,user,manager=None):
-    if(not manager):
-        manager = dataBaseManager.DBManager() 
-    images , imageTime = measure_execution_time(preImage.GetImages,file, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
-    ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)  
-    qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,file)
-    bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
 
-    validation = ValidateF.ValidateFacture(bill,qrC)
-    if(validation!="Success"):
-        message = f"Erreur {validation} dans la facture {fileName}"
-        tqdm.write(message)
-        return message
+@app.websocket("/traiteDownload")
+async def TraiteLocalsFactures(websocket: WebSocket,token: Optional[str] = Cookie(None)):
+    await websocket.accept()
+    session = connection.get_session()
+    try:
+        user = auth.get_current_user(token)
+        user = dataBaseManager.GetUserByEmail(session,user)
+    except:
+        await websocket.close(code=4000)
+        session.close()
+        raise HTTPException(status_code=400, detail="Invalid token")
+    data_path = GetPathToData()
+    fileListe = os.listdir(data_path)  
+    taille = len(fileListe)
+    traite = 0
+    nbErreur=0
+    if taille==0:
+        pass
     
-    #TODO validation coter base de donnée
-    manager.CreateEntriesFacture(bill,qrC,origin,fileName,user)
-    return "Success"
+    try:
+        loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
+        await websocket.send_text(json.dumps(loadingState))
+        for file in fileListe:
+            path = GetFullPath(file)
+            image = Image.open(path)
+            result = await TraiteFactureImage(image,file,session,user)
+            traite+=1
+            if result!="Success":
+                nbErreur+=1 
+            loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
+            await websocket.send_text(json.dumps(loadingState))
+            session.commit()
+    except WebSocketDisconnect:
+        print("Client disconnected during processing.")
+        session.close()
+        return
+    except Exception as e:
+        print(f"Erreur dans le process : {e}")
+        await websocket.close(code=5000)
+        session.close()
+        return
+    finally:
+        print("Finished Processing")
+        await websocket.close()
+        session.close()
 
+async def TraiteFactureImage(image,fileName,session,user):
+    #Si on réussi a faire l'essemble des operation sans raise un httpexception c'est qu'on a réussi
+    try:
+        firstResult = await process_image(image,user,session,"Local")
+        bill = firstResult["bill"]
+        qrC = firstResult["qrC"]
+        requestDict = firstResult["requestDict"]
+        previousTime=firstResult["totalTime"]
+        finalResult= await FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Local",fileName,image)
+        return "Success"
+    except Exception as e:
+        print(f"Erreur : {e}")
+        return "Failure"
+
+@app.get("/process_data")
+async def processData(request : Request,token: Optional[str] = Cookie(None)):
+    auth.get_current_user(token)
+    return templates.TemplateResponse("processLocal.html",{"request":request})
 
 ###Partie API 
 
@@ -247,97 +242,33 @@ async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[s
             image = Image.open(io.BytesIO(image_data))
         except:
             raise HTTPException(status_code=422,detail="Impossible de lire l'image")
+       
+        #Do preprocessing , ocr , formatage and read QRCode et extrait les infos 
         try:
-            qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,image)
-        except:
-            #TODO Bug sur la base de données rajouter la colone pour la lecture du QRCode
-            raise HTTPException(status_code=422, detail="Erreur Serveur lors de la lecture du QRCode")  
-        #Fait du traitement de l'image pour l'ocr
-        try:
-            images , imageTime = measure_execution_time(preImage.GetImages,image, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
-        except:
-            detail = "Erreur Serveur lors du traitement de l'image"
-            HandleError(session,requestDict,"image",image,detail,500,origin="Distant",user=user)
-        requestDict["image"]["status"]="Success"
-        requestDict["image"]["time"]=imageTime
-        #Fait l'ocr
-        try:
-            ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)
-        except Exception as e:
-            detail = f"Erreur Serveur lors de l'ocr {e}"
-            HandleError(session,requestDict,"ocr",image,detail,500,origin="Distant",user=user)
-        requestDict["ocr"]["status"]="Success"
-        requestDict["ocr"]["time"]=ocrTime
-        #Formate le text de l'ocr
-        try:
-            bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
-        except Exception as e:
-            detail = f"Erreur Serveur lors du formatage : {e}"
-            HandleError(session,requestDict,"formatage",image,detail,500,origin="Distant",user=user)
-        
-        #Valide la coherence de la facture
-        erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin="Distant")
-        if (erreurLocal!=None) and (erreurLocal.gravity=="Error"):
-            requestDict["formatage"]["status"]="Erreur"
-            requestOCR = dbManager.CreateRequest(requestDict)
-            dataBaseManager.EnterError(session,requestOCR,erreurLocal,user)
+            firstResult = await process_image(image,user,session,"Distant")
+        except HTTPException as httpe:
             session.close()
-            raise HTTPException(status_code=422,detail="Erreur lors de la validation de la facture")
-        requestDict["formatage"]["status"]="Success"
-        requestDict["formatage"]["time"]=formatTime
-
-        #Fait la validation de la facture comparativement au info de la base de donnée
-        start_time = time.time()
-        erreurDB = DoDataBaseValidation(image,bill,qrC,origin="Distant")
-        if (erreurDB != None) and (erreurDB.gravity=="Error"):
-            requestDict["db"]["status"]="Erreur"
-            requestOCR = dbManager.CreateRequest(requestDict)
-            dataBaseManager.EnterError(session,requestOCR,erreurDB,user)
-            session.close()
-            raise HTTPException(status_code=422,detail="Erreur la facture existe deja dans la base de donnée")
-        
-        #On creer les instance purrement objet
-        facture = dbManager.CreateFacture(bill,qrC,"Distant",None)
-        client = dbManager.CreateClient(session,bill,qrC)
+            raise httpe
+        bill = firstResult["bill"]
+        qrC = firstResult["qrC"]
+        requestDict = firstResult["requestDict"]
+        previousTime=firstResult["totalTime"]
+        #Fini le process et insere les infos dans la base de données
         try:
-            dataBaseManager.EnterFacture(session,facture,user,client)
-        except:
-            print("GROSS ERROR")
-            #TODO Gere le cas ou on arrive pas a inserer la facture
-            pass
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        requestDict["db"]["status"]="Success"
-        requestDict["db"]["time"]=elapsed_time
-        tempsTotal = imageTime+ocrTime+QRTime+formatTime+elapsed_time
-        requestDict["tempsTotal"]=tempsTotal
-
-        #On rerécupere la facture pour y accoller la requete final
-        requestOCR = dbManager.CreateRequest(requestDict)
-        facture = dataBaseManager.GetFactureByName(session,bill["billName"])
-        requestOCR.facture = facture
-        #Si il y a des erreurs non bloquante on les rajoute
-        erreurs = []
-        if erreurLocal:
-            erreurs.append(erreurLocal)
-        if erreurDB:
-            erreurs.append(erreurDB)
-        requestOCR.saved_error=erreurs
-        requestOCR.user=user
-        session.add(requestOCR)
-        session.commit()
+            secondResult =await FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Distant",None,image)
+        except HTTPException as httpe:
+            print(f"Erreur lors de la seconde étape {httpe}")
+            session.close()
+            raise httpe
         session.close()
-        #Tout c'est bien passer on renvoie la page de resultat
-        info={"result":"Facture uploader avec success"}
-        return templates.TemplateResponse("uploadValidate.html",{"request":request,"info":info})
+        return templates.TemplateResponse("uploadValidate.html",{"request":request,"info":secondResult})
 
     return HTMLResponse(content="<h1>No image uploaded yet!</h1>")
 
 # Image processing function extracted from autoOCR
-async def process_image(image,user,session):
+async def process_image(image,user,session,origin):
     #Creer un dictionnaire préremplis pour suivre la requete
     requestDict = dbManager.GetRequestDict()
-
     try:
         qrC ,QRTime = measure_execution_time(QRT.GetQRInfoDict,image)
     except:
@@ -348,7 +279,7 @@ async def process_image(image,user,session):
         images , imageTime = measure_execution_time(preImage.GetImages,image, scaleFactor1=5, scaleFactor2=1, darkening=0.5)
     except:
         detail = "Erreur Serveur lors du traitement de l'image"
-        HandleError(session,requestDict,"image",image,detail,500,origin="Distant",user=user)
+        HandleError(session,requestDict,"image",image,detail,500,origin=origin,user=user)
     requestDict["image"]["status"]="Success"
     requestDict["image"]["time"]=imageTime
         #Fait l'ocr
@@ -356,7 +287,7 @@ async def process_image(image,user,session):
         ocr , ocrTime =measure_execution_time(OCRT.OCRMultiple,images)
     except Exception as e:
         detail = f"Erreur Serveur lors de l'ocr {e}"
-        HandleError(session,requestDict,"ocr",image,detail,500,origin="Distant",user=user)
+        HandleError(session,requestDict,"ocr",image,detail,500,origin=origin,user=user)
     requestDict["ocr"]["status"]="Success"
     requestDict["ocr"]["time"]=ocrTime
         #Formate le text de l'ocr
@@ -364,42 +295,39 @@ async def process_image(image,user,session):
         bill,formatTime = measure_execution_time(OCRF.TraitementZoneDict,ocr)
     except Exception as e:
         detail = f"Erreur Serveur lors du formatage : {e}"
-        HandleError(session,requestDict,"formatage",image,detail,500,origin="Distant",user=user)
+        HandleError(session,requestDict,"formatage",image,detail,500,origin=origin,user=user)
     
     requestDict["formatage"]["status"]="Success"
     requestDict["formatage"]["time"]=formatTime
     timeToNow = formatTime+ocrTime+imageTime
     #Valide la coherence de la facture
-    return {"bill":bill,"qrC":qrC,"requestDict":requestDict}
+    return {"bill":bill,"qrC":qrC,"requestDict":requestDict,"totalTime":timeToNow}
 
 
         
-async def FinishProcess(bill,qrC,requestDict,session,user,previousTime):
-    
-    erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin="Distant")
+async def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,filename,image):
+    erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin=origin)
     if (erreurLocal!=None) and (erreurLocal.gravity=="Error"):
         requestDict["formatage"]["status"]="Erreur"
         requestOCR = dbManager.CreateRequest(requestDict)
         dataBaseManager.EnterError(session,requestOCR,erreurLocal,user)
-        session.close()
         raise HTTPException(status_code=422,detail="Erreur lors de la validation de la facture")
     #Fait la validation de la facture comparativement au info de la base de donnée
     start_time = time.time()
-    erreurDB = DoDataBaseValidation(image,bill,qrC,origin="Distant")
+    erreurDB = DoDataBaseValidation(image,bill,qrC,origin=origin,filename=filename)
     if (erreurDB != None) and (erreurDB.gravity=="Error"):
         requestDict["db"]["status"]="Erreur"
         requestOCR = dbManager.CreateRequest(requestDict)
         dataBaseManager.EnterError(session,requestOCR,erreurDB,user)
-        session.close()
         raise HTTPException(status_code=422,detail="Erreur la facture existe deja dans la base de donnée")
         
-    #On creer les instance purrement objet
-    facture = dbManager.CreateFacture(bill,qrC,"Distant",None)
+    #On creer les instance purement objet
+    facture = dbManager.CreateFacture(bill,qrC,origin,filename)
     client = dbManager.CreateClient(session,bill,qrC)
     try:
         dataBaseManager.EnterFacture(session,facture,user,client)
-    except:
-        print("GROSS ERROR")
+    except Exception as e:
+        print(f"GROSS ERROR : {e}")
         #TODO Gere le cas ou on arrive pas a inserer la facture
         pass
     end_time = time.time()
@@ -419,13 +347,12 @@ async def FinishProcess(bill,qrC,requestDict,session,user,previousTime):
     if erreurDB:
         erreurs.append(erreurDB)
     requestOCR.saved_error=erreurs
-    requestOCR.user=user
+    requestOCR.from_user=user
     session.add(requestOCR)
     session.commit()
-    session.close()
     #Tout c'est bien passer on renvoie la page de resultat
     info={"result":"Facture uploader avec success"}
-    return templates.TemplateResponse("uploadValidate.html",{"request":request,"info":info})#TODO
+    return info
 
 
 def DoLocalValidation(image,dict,qrC,origin,filename=None):
@@ -465,7 +392,6 @@ def HandleError(session,requestDict,keyStop,image,detail,statusCode,origin,user)
     request = dbManager.CreateRequest(requestDict)
     erreur = dbManager.CreateError(gravity="Error",result=detail,origin=origin,savedAs=saveLocation)
     dataBaseManager.EnterError(session,request=request,erreur=erreur,user=user)
-    session.close()
     raise HTTPException(status_code=statusCode, detail=detail)  
 
 
@@ -501,8 +427,10 @@ async def CreateUser(request: Request,userEmail:str = Form(...),userPassword:str
     if user:
         raise HTTPException(status_code=409, detail="L'utilisateur existe deja")
     hashed = security.get_password_hash(userPassword)
-
-    userAccess.save_user(userEmail,hashed)
+    userAccess.save_user(session,userEmail,hashed)
+    session.close()
+    response = RedirectResponse(url="/login", status_code=HTTP_303_SEE_OTHER)
+    return response
 
 @app.get("/login")
 async def PageLogin(request:Request):

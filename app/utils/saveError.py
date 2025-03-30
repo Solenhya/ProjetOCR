@@ -20,9 +20,10 @@ def CreateFileName():
 
 #A Function to set up (if it doesn't exist)and return the path to the folder where we keep the file that presented error
 def GetFolderPath():
-    folderPath = "/errorFile"
+    folderPath = "errorFile"
     if not os.path.isdir(folderPath):
         os.makedirs(folderPath)
+        print(f"Folder d'erreur creer")
     return folderPath
 
 #A Function to save an image into the errorFolder with an unique name
@@ -31,6 +32,7 @@ def SaveErrorImage(image):
     fileName = CreateFileName()
     saveLocation = os.path.join(folderPath,fileName)
     image.save(saveLocation)
+    print(f"Image saved at {saveLocation}")
     return fileName
 
 def LoadErrorImage(imageName):
