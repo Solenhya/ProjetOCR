@@ -110,7 +110,7 @@ class DBManager:
     #Partie verification qui nécessite la base de données
 
     def ValidateFacture(self,facture,qrInfo):
-        presence = self.VerifyFacturePresence(facture["billName"])
+        presence = self.VerifyFacturePresence(qrInfo["facName"])
         if presence["status"]!="Success":
             return presence
         client = self.VerifyClient(facture["destinator"],facture["email"],qrInfo["custGender"],qrInfo["custBirth"])

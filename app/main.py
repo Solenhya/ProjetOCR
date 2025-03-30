@@ -102,13 +102,12 @@ async def TraiteLocalsFactures(websocket: WebSocket,token: Optional[str] = Cooki
         for file in fileListe:
             path = GetFullPath(file)
             image = Image.open(path)
-            result = await TraiteFactureImage(image,file,session,user)
+            result = TraiteFactureImage(image,file,session,user)
             traite+=1
             if result!="Success":
                 nbErreur+=1 
             loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
             await websocket.send_text(json.dumps(loadingState))
-            session.commit()
     except WebSocketDisconnect:
         print("Client disconnected during processing.")
         session.close()
@@ -123,18 +122,21 @@ async def TraiteLocalsFactures(websocket: WebSocket,token: Optional[str] = Cooki
         await websocket.close()
         session.close()
 
-async def TraiteFactureImage(image,fileName,session,user):
+#Ne peux pas faire async car il peut y avoir conflict dans l'insertion des factures
+def TraiteFactureImage(image,fileName,session,user):
     #Si on réussi a faire l'essemble des operation sans raise un httpexception c'est qu'on a réussi
     try:
-        firstResult = await process_image(image,user,session,"Local")
+        firstResult = process_image(image,user,session,"Local")
         bill = firstResult["bill"]
         qrC = firstResult["qrC"]
         requestDict = firstResult["requestDict"]
         previousTime=firstResult["totalTime"]
-        finalResult= await FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Local",fileName,image)
+        finalResult= FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Local",fileName,image)
+        session.commit()
         return "Success"
     except Exception as e:
         print(f"Erreur : {e}")
+        session.rollback()
         return "Failure"
 
 @app.get("/process_data")
@@ -245,7 +247,7 @@ async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[s
        
         #Do preprocessing , ocr , formatage and read QRCode et extrait les infos 
         try:
-            firstResult = await process_image(image,user,session,"Distant")
+            firstResult = process_image(image,user,session,"Distant")
         except HTTPException as httpe:
             session.close()
             raise httpe
@@ -255,7 +257,7 @@ async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[s
         previousTime=firstResult["totalTime"]
         #Fini le process et insere les infos dans la base de données
         try:
-            secondResult =await FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Distant",None,image)
+            secondResult = FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Distant",None,image)
         except HTTPException as httpe:
             print(f"Erreur lors de la seconde étape {httpe}")
             session.close()
@@ -266,7 +268,7 @@ async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[s
     return HTMLResponse(content="<h1>No image uploaded yet!</h1>")
 
 # Image processing function extracted from autoOCR
-async def process_image(image,user,session,origin):
+def process_image(image,user,session,origin):
     #Creer un dictionnaire préremplis pour suivre la requete
     requestDict = dbManager.GetRequestDict()
     try:
@@ -305,7 +307,7 @@ async def process_image(image,user,session,origin):
 
 
         
-async def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,filename,image):
+def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,filename,image):
     erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin=origin)
     if (erreurLocal!=None) and (erreurLocal.gravity=="Error"):
         requestDict["formatage"]["status"]="Erreur"
@@ -325,7 +327,13 @@ async def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,fi
     facture = dbManager.CreateFacture(bill,qrC,origin,filename)
     client = dbManager.CreateClient(session,bill,qrC)
     try:
-        dataBaseManager.EnterFacture(session,facture,user,client)
+        #Debug de l'extreme
+        factureTest = dataBaseManager.GetFactureByName(session,qrC["facName"])
+        if factureTest:
+            print("Erreur dans l'insertion verification de la présence n'a pas marcher")
+            raise HTTPException(status_code =500,detail="Erreur dans l'insertion verification de la présence n'a pas marcher")
+        else:
+            dataBaseManager.EnterFacture(session,facture,user,client)
     except Exception as e:
         print(f"GROSS ERROR : {e}")
         #TODO Gere le cas ou on arrive pas a inserer la facture
