@@ -43,3 +43,8 @@ def LoadErrorImage(imageName):
         except:
             print(f"Erreur lors de la lecture de l'image a l'emplacement {saveLocation}")
             return None
+        
+def GetNumberofError():
+    folderPath = GetFolderPath()
+    fileListe = os.listdir(folderPath)
+    return len(fileListe)

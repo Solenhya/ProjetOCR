@@ -77,73 +77,6 @@ def GetFullPath(filename):
 imageParam = {"scaleFactor1":5,"scaleFactor2":1,"darkening":0.5}
 
 
-@app.websocket("/traiteDownload")
-async def TraiteLocalsFactures(websocket: WebSocket,token: Optional[str] = Cookie(None)):
-    await websocket.accept()
-    session = connection.get_session()
-    try:
-        user = auth.get_current_user(token)
-        user = dataBaseManager.GetUserByEmail(session,user)
-    except:
-        await websocket.close(code=4000)
-        session.close()
-        raise HTTPException(status_code=400, detail="Invalid token")
-    data_path = GetPathToData()
-    fileListe = os.listdir(data_path)  
-    taille = len(fileListe)
-    traite = 0
-    nbErreur=0
-    if taille==0:
-        pass
-    
-    try:
-        loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
-        await websocket.send_text(json.dumps(loadingState))
-        for file in fileListe:
-            path = GetFullPath(file)
-            image = Image.open(path)
-            result = TraiteFactureImage(image,file,session,user)
-            traite+=1
-            if result!="Success":
-                nbErreur+=1 
-            loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
-            await websocket.send_text(json.dumps(loadingState))
-    except WebSocketDisconnect:
-        print("Client disconnected during processing.")
-        session.close()
-        return
-    except Exception as e:
-        print(f"Erreur dans le process : {e}")
-        await websocket.close(code=5000)
-        session.close()
-        return
-    finally:
-        print("Finished Processing")
-        await websocket.close()
-        session.close()
-
-#Ne peux pas faire async car il peut y avoir conflict dans l'insertion des factures
-def TraiteFactureImage(image,fileName,session,user):
-    #Si on réussi a faire l'essemble des operation sans raise un httpexception c'est qu'on a réussi
-    try:
-        firstResult = process_image(image,user,session,"Local")
-        bill = firstResult["bill"]
-        qrC = firstResult["qrC"]
-        requestDict = firstResult["requestDict"]
-        previousTime=firstResult["totalTime"]
-        finalResult= FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Local",fileName,image)
-        session.commit()
-        return "Success"
-    except Exception as e:
-        print(f"Erreur : {e}")
-        session.rollback()
-        return "Failure"
-
-@app.get("/process_data")
-async def processData(request : Request,token: Optional[str] = Cookie(None)):
-    auth.get_current_user(token)
-    return templates.TemplateResponse("processLocal.html",{"request":request})
-
 ###Partie API 
 
 #Partie Home et navigation
@@ -226,6 +159,72 @@ async def validateFacture(request:Request):
     #TODO
     pass
 
+@app.websocket("/traiteDownload")
+async def TraiteLocalsFactures(websocket: WebSocket,token: Optional[str] = Cookie(None)):
+    await websocket.accept()
+    session = connection.get_session()
+    try:
+        user = auth.get_current_user(token)
+        user = dataBaseManager.GetUserByEmail(session,user)
+    except:
+        await websocket.close(code=4000)
+        session.close()
+        raise HTTPException(status_code=400, detail="Invalid token")
+    data_path = GetPathToData()
+    fileListe = os.listdir(data_path)  
+    taille = len(fileListe)
+    traite = 0
+    nbErreur=0
+    if taille==0:
+        pass
+    
+    try:
+        loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
+        await websocket.send_text(json.dumps(loadingState))
+        for file in fileListe:
+            path = GetFullPath(file)
+            image = Image.open(path)
+            result = TraiteFactureImage(image,file,session,user)
+            traite+=1
+            if result!="Success":
+                nbErreur+=1 
+            loadingState = {"traite":traite,"nbErreur":nbErreur,"taille":taille}
+            await websocket.send_text(json.dumps(loadingState))
+    except WebSocketDisconnect:
+        print("Client disconnected during processing.")
+        session.close()
+        return
+    except Exception as e:
+        print(f"Erreur dans le process : {e}")
+        await websocket.close(code=5000)
+        session.close()
+        return
+    finally:
+        print("Finished Processing")
+        await websocket.close()
+        session.close()
+
+#Ne peux pas faire async car il peut y avoir conflict dans l'insertion des factures
+def TraiteFactureImage(image,fileName,session,user):
+    #Si on réussi a faire l'essemble des operation sans raise un httpexception c'est qu'on a réussi
+    try:
+        firstResult = process_image(image,user,session,"Local")
+        bill = firstResult["bill"]
+        qrC = firstResult["qrC"]
+        requestDict = firstResult["requestDict"]
+        previousTime=firstResult["totalTime"]
+        finalResult= FinishProcess(bill,qrC,requestDict,session,user,previousTime,"Local",fileName,image)
+        session.commit()
+        return "Success"
+    except Exception as e:
+        print(f"Erreur : {e}")
+        session.rollback()
+        return "Failure"
+
+@app.get("/process_data")
+async def processData(request : Request,token: Optional[str] = Cookie(None)):
+    auth.get_current_user(token)
+    return templates.TemplateResponse("processLocal.html",{"request":request})
 
 @app.post("/autoOCR")
 async def autoOCR(request:Request,image: UploadFile =File(...),token: Optional[str] = Cookie(None)):
@@ -304,8 +303,6 @@ def process_image(image,user,session,origin):
     timeToNow = formatTime+ocrTime+imageTime
     #Valide la coherence de la facture
     return {"bill":bill,"qrC":qrC,"requestDict":requestDict,"totalTime":timeToNow}
-
-
         
 def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,filename,image):
     erreurLocal = DoLocalValidation(image,dict=bill,qrC=qrC,origin=origin)
@@ -362,7 +359,6 @@ def FinishProcess(bill,qrC,requestDict,session,user,previousTime,origin,filename
     info={"result":"Facture uploader avec success"}
     return info
 
-
 def DoLocalValidation(image,dict,qrC,origin,filename=None):
     validation = ValidateF.ValidateFacture(dict,qrC)
     if(validation!="Success"):
@@ -393,7 +389,6 @@ def DoDataBaseValidation(image,dict,qrC,origin,filename=None):
         erreur = dbManager.CreateError(gravity=gravity,result=message,origin=origin,savedAs=saveas)
         return erreur
 
-
 def HandleError(session,requestDict,keyStop,image,detail,statusCode,origin,user):
     saveLocation = saveError.SaveErrorImage(image)
     requestDict[keyStop]["status"]="Erreur"
@@ -421,6 +416,42 @@ def ocrBrutFacture(fileName):
     ocr = OCRT.OCRMultiple(images)
     qrC = QRT.GetQRInfo(fullPath)
     return{"ocr":ocr,"qr":qrC}
+
+#Partie monitoring
+@app.get("/factures_info")
+def showInfoFacture(request : Request , token: Optional[str] = Cookie(None)):
+    auth.get_current_user(token)
+    session = connection.get_session()
+    try:
+        total = dataBaseManager.GetTotalSold(session)
+        numberofFacture = dataBaseManager.GetNumberFacture(session)
+        numberProduit = dataBaseManager.get_unique_product_count(session)
+        averageFacture = dataBaseManager.GetAverageFacturePrice(session)
+    except Exception as e:
+        session.close()
+        raise HTTPException(status_code=422,detail=e)
+
+    infoFacture = {"totalSell":total,"numberFacture":numberofFacture,"numberProduct":numberProduit,"averageFacture":averageFacture}
+    session.close()
+    return templates.TemplateResponse("facturesInfo.html",{"request":request,"infoFacture":infoFacture})
+
+
+@app.get("/monitoring_info")
+def showInfoMonitoring(request : Request , token:Optional[str]=Cookie(None)):
+    auth.get_current_user(token)
+    session = connection.get_session()
+    try:
+        tempsMoyen = dataBaseManager.GetRequeteAverageTime(session)
+        nombreErreur = dataBaseManager.GetRequeteErreur(session)
+        nombreErreurImage = saveError.GetNumberofError()
+        nombreFacture = dataBaseManager.GetNumberFacture(session)
+    except Exception as e:
+        session.close()
+        raise HTTPException(status_code=422,detail=e)
+    info = {"tempsMoyen":tempsMoyen,"nombreFacture":nombreFacture,"nombreErreur":nombreErreur,"savedErreur":nombreErreurImage}
+    session.close()
+    return templates.TemplateResponse("monitoringInfo.html",{"request":request,"info":info})
+
 
 #Partie utilisateur
 

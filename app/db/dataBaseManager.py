@@ -1,6 +1,7 @@
 from .connection import get_session
 from .models import Facture,Client,Sale,User,RequestOCR,Error
-from sqlalchemy import func
+from sqlalchemy import func ,select
+from sqlalchemy.exc import NoResultFound
 from datetime import date
 
 class DBManager:
@@ -181,3 +182,34 @@ def AddUser(session,user):
 def SessionCommitItem(session,item):
     session.add(item)
     session.commit()
+#Partie info facture
+def GetTotalSold(session):
+    query = select(func.sum(Facture.pricetotal))
+    total = session.execute(query).scalar_one()
+    return total
+def get_unique_product_count(session):
+    stmt = select(func.count(Sale.name.distinct()))
+    unique_product_count = session.execute(stmt).scalar_one()
+    return unique_product_count
+
+def GetNumberFacture(session):
+    query = select(func.count(Facture.name))
+    number = session.execute(query).scalar_one()
+    return number
+
+def GetAverageFacturePrice(session):
+    query = select(func.avg(Facture.pricetotal))
+    average = session.execute(query).scalar_one()
+    return average
+
+#Partie info process
+
+def GetRequeteAverageTime(session):
+    query = select(func.avg(RequestOCR.timeEnd)).filter(RequestOCR.timeEnd !=0)
+    tempsaverage = session.execute(query).scalar_one()
+    return tempsaverage
+
+def GetRequeteErreur(session):
+    query = select(func.count(RequestOCR.id)).filter(RequestOCR.timeEnd !=0)
+    nombreErreur = session.execute(query).scalar_one()
+    return nombreErreur
