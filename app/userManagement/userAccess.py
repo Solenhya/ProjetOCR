@@ -7,7 +7,7 @@ def get_user(session,userEmail):
     session.close()
     return user
 
-def save_user(session,userEmail,hashedPassword,userAccess="All"):
+def save_user(session,userEmail,hashedPassword,userAccess="Not"):
     user = User(    userEmail = userEmail,
                 userPassword=hashedPassword,
                 userRight=userAccess)

@@ -210,6 +210,6 @@ def GetRequeteAverageTime(session):
     return tempsaverage
 
 def GetRequeteErreur(session):
-    query = select(func.count(RequestOCR.id)).filter(RequestOCR.timeEnd !=0)
+    query = select(func.count(RequestOCR.id)).filter(RequestOCR.timeEnd ==0)
     nombreErreur = session.execute(query).scalar_one()
     return nombreErreur

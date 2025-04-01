@@ -37,22 +37,18 @@ import json
 
 app = FastAPI(
     title="OCR Facture",
-    description="A simple API for facture ocr",
+    description="Une API pour le traitement OCR de factures",
     version="0.1.0"
 )
-templates = Jinja2Templates(directory="templates")
+#templates = Jinja2Templates(directory="templates")
 #Pour docker qui a une architecture un peu differentes
-#templates = Jinja2Templates(directory="app/templates")
+templates = Jinja2Templates(directory="app/templates")
 static_dir = "static"
 if not os.path.isdir(static_dir):
     os.makedirs(static_dir)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 dbManager = dataBaseManager.DBManager()
 
-
-def SaveImageToError(image):
-
-    pass #TODO implementer le systeme de sauvegarde de l'image
 
 def GetPathToData():  
     # Go up one folder (parent directory) and then into the 'data' folder
@@ -86,7 +82,8 @@ async def homePage(request : Request,token: Optional[str] = Cookie(None)):
     if not token:
         return RedirectResponse(url="/login", status_code=HTTP_303_SEE_OTHER)
     user = auth.get_current_user(token)
-    return templates.TemplateResponse("uploadFile.html", {"request": request, "user": user})
+    response = RedirectResponse(url="/home", status_code=HTTP_303_SEE_OTHER)
+    return response
 
 @app.get("/home")
 async def ConnectedHome(request : Request,token: Optional[str]=Cookie(None)):

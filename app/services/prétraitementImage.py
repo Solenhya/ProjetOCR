@@ -21,31 +21,6 @@ def ImagefromPath(path):
     image.paste(white_image, zone)   
     return image
 
-def GetImagesFull(path):
-    scale1 = 10
-    scale2 = 4
-    boostThresh = 200
-    boostValue = 30
-    resampling = Image.Resampling.LANCZOS
-    
-    image = Image.open(path)
-    image_width, image_height = image.size
-    width1 = image_width-500
-    height1 = 160
-    zone1 = (0,0,width1,height1)
-    premiereImage = image.crop(zone1)
-    premiereImage = premiereImage.resize((width1*scale1,height1*scale1),resample=resampling)
-    premiereImage = ShiftImage(premiereImage,boostThresh,boostValue)
-
-    height2 = image_height-height1
-    width2 = image_width
-    zone2 = (0,height1,image_width,image_height)
-    deuxiemeImage = image.crop(zone2)
-    deuxiemeImage = deuxiemeImage.resize((width2*scale2,height2*scale2),resample=resampling)
-    deuxiemeImage = ShiftImage(deuxiemeImage,boostThresh,boostValue)
-
-    return [premiereImage,deuxiemeImage]
-
 def Identity(image,parm1,parm2):
     return image
 
@@ -100,17 +75,17 @@ def ScaleImage(image,scaleFactor,sampling):
     return image
 
 def DarkenImage(image,darkening,threshold=240):
+    #Convertit l'image en niveau de gris
     if image.mode != 'L':
         img_gray = image.convert('L')
     else:
         img_gray = image
-    # Convert to numpy array for easier manipulation
+    # Convertit en array numpy pour performance
     img_array = np.array(img_gray)
-    # Create a mask for non-white pixels (adjust threshold as needed)
-    # Pixels with values less than threshold are considered non-white
+    # Creer un mask pour définir les pixel non blanc
     non_white_mask = img_array < threshold 
-    # Darken non-white pixels
+    # Fonce les pixel non blanc en multipliant par darkening <1
     img_array[non_white_mask] = np.clip(img_array[non_white_mask] * darkening, 0, 255).astype(np.uint8)  
-    # Convert back to PIL Image
+    # reconvertit en image PIL
     img_enhanced = Image.fromarray(img_array)  
     return img_enhanced 
