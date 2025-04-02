@@ -1,0 +1,31 @@
+# Exclude version control directories
+.git/
+.gitignore
+
+# Exclude les folder non utiliser
+app/api
+app/schemas
+
+# Exclure les fichier non utiliser
+app/tableCreation.py
+app/web.py
+app/ErreursOld.txt
+
+# Exclure le readme et le requirement.in
+README.md
+requirements.in
+
+# Exclure test et data
+test
+data
+
+# Exclude Python bytecode files
+*.pyc
+*.pyo
+__pycache__/
+
+# Exclude logs and temporary files
+*.log
+*.tmp
+*.swp
+*.bak

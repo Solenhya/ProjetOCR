@@ -1,0 +1,41 @@
+{% extends "informationTemplate.html" %}
+
+{% block main %}
+<div class="container mt-5">
+    <h1 class="text-center">Voici quelques informations sur les requetes et erreurs</h1>
+    <div class="row">
+        <div class="col-md-3 mb-3" style="text-align:center;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Nombre de facture traité</h5>
+                    <p class="card-text display-4">{{ info.nombreFacture }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-b" style="text-align:center;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Nombre d'erreur</h5>
+                    <p class="card-text display-4">{{ info.nombreErreur }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4" style="text-align:center;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Temps moyen de traitement</h5>
+                    <p class="card-text display-4">{{ info.tempsMoyen | round(3)}} s</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-4" style="text-align:center;">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Nombre d'erreur sauvegarder non traité</h5>
+                    <p class="card-text display-4">{{ info.savedErreur}}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

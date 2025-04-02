@@ -1,0 +1,12 @@
+{% extends "connectedTemplate.html" %}
+
+{% block main %}
+<h2>Resultat</h2>
+<p>
+    {{info.result}}
+</p>
+
+<form action="/uploadfile" method="GET">
+    <button type="submit">Traiter une autre facture</button>
+</form>
+{% endblock %}

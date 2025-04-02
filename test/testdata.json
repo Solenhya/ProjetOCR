@@ -1,0 +1,40 @@
+[{
+    "path":"FAC_2018_0001-654.png",
+    "expectedResult":{
+        "billName":"FAC/2018/0001",
+        "date":"2018-10-13",
+        "destinator":"Carol Potter",
+        "email":"ashley38@example.org",
+        "address":"405 Adrian Crest Suite 095 Jamesstad, MN 36094",
+        "total":"114684",
+        "sales":
+            [
+                {"name":"Edge so crime share.","quantity":4,"price":1218},
+                {"name":"Thank do article especially.","quantity":1,"price":6786},
+                {"name":"Include dinner main friend.","quantity":3,"price":28799},
+                {"name":"Capital hear morning people.","quantity":3,"price":5543}
+            ]
+        
+    }
+},
+{
+    "path":"FAC_2018_0015-089.png",
+    "expectedResult":{
+        "billName":"FAC/2018/0015",
+        "date":"2018-12-10",
+        "destinator":"Jordan Robinson",
+        "email":"davidsonderek@example.org",
+        "address":"0352 Bennett Greens Suite 939 Lake Travisbury, MS 51861",
+        "total":"33439",
+        "sales":
+            [
+                {"name":"Attorney break sea kitchen.","quantity":2,"price":1170},
+                {"name":"Party loss watch organization.","quantity":1,"price":2876},
+                {"name":"This group community purpose.","quantity":2,"price":10200},
+                {"name":"Market generation pull rather.","quantity":1,"price":7133},                
+                {"name":"Environmental ever sort letter.","quantity":1,"price":690}
+            ]
+        
+    }
+}
+]

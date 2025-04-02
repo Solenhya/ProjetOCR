@@ -48,6 +48,13 @@ def DowloadImages(filepath,date,count=10):
             print(f"Telecharger {downloadcount} fichier sur {totalDownload}")
     print(f"Fini de télécharger tout les fichier pour {date}")
     return downloadcount
+
+def DownloadAllImages(folderpath):
+    load_dotenv()
+    availableDate = [2018,2019,2020,2021,2022,2023,2024,2025]
+    for date in availableDate:
+        DowloadImages(folderpath,date)
+
 if __name__=="__main__":
     load_dotenv()
     availableDate = [2018,2019,2020,2021,2022,2023,2024,2025]

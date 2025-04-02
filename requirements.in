@@ -1,0 +1,15 @@
+pillow
+pytesseract
+requests
+pandas
+opencv-python
+pillow
+pyzbar
+sqlalchemy
+numpy
+fastapi[standard]
+passlib
+python-jose==3.4.0
+bcrypt==4.0.1
+tqdm
+psycopg2

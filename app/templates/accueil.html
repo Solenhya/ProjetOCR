@@ -1,0 +1,44 @@
+{% extends "connectedTemplate.html" %}
+
+{% block main %}
+<div class="container mt-5">
+    <!-- Hero Section -->
+    <div class="text-center mb-4">
+        <h1>Bienvenu sur le service OCR</h1>
+        <p class="lead">Utiliser notre service OCR pour extraire les informations de factures.</p>
+    </div>
+
+    <!-- Presentation Section -->
+    <div class="row text-center">
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Rapide et Efficace</h5>
+                    <p class="card-text">Notre service d'OCR est fait pour extraire rapidement les informations de vos factures.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Facile d'utilisation</h5>
+                    <p class="card-text">Uploader votre facture et l'ocr se charge d'extraire les données. En un clic toute vos données sont extraite</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Controler et Humain</h5>
+                    <p class="card-text">Les données sont vérifier pour leur comformité et véraciter . Et vous avez le dernier mot sur les données de facture </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-center">
+        <a href="/uploadfile" class="btn btn-primary">Start OCR Now</a>
+    </div>
+</div>
+{% endblock %}
